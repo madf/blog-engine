@@ -89,13 +89,13 @@ instance FromJSON Post
             <*> o .: "content"
             <*> o .: "is_draft"
 
-create :: Connection -> IO Post
+create :: Connection -> Text -> [Block] -> IO ()
 create = undefined
 
-get :: Connection -> PostId -> IO Post
+get :: Connection -> PostId -> IO (Maybe Post)
 get = undefined
 
-update :: Connection -> Text -> [Block] -> IO Post
+update :: Connection -> PostId -> Text -> [Block] -> Bool -> IO ()
 update = undefined
 
 delete :: Connection -> PostId -> IO ()

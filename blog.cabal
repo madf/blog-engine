@@ -25,10 +25,11 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
       Madf.Blog
+      Madf.Blog.API
       Madf.Blog.Ids
       Madf.Blog.Image
+      Madf.Blog.Pages
       Madf.Blog.Post
       Madf.Blog.Utils
   other-modules:
@@ -44,6 +45,7 @@ library
       aeson
     , base >=4.7 && <5
     , bytestring
+    , http-types
     , lucid
     , scotty
     , sqlite-simple
@@ -69,6 +71,7 @@ executable blog-exe
     , base
     , blog
     , bytestring
+    , http-types
     , lucid
     , scotty
     , sqlite-simple
@@ -98,6 +101,7 @@ test-suite blog-test
     , hspec
     , hspec-wai
     , hspec-wai-json
+    , http-types
     , lucid
     , scotty
     , sqlite-simple

@@ -26,6 +26,7 @@ dependencies:
 - lucid
 - wai
 - warp
+- http-types
 - sqlite-simple
 - bytestring
 - text

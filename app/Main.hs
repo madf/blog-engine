@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Lib
+import Madf.Blog
 
 main :: IO ()
 main = serve

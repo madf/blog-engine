@@ -1,136 +1,77 @@
 module Madf.Blog
-    ( mainPage
-    , newPost
-    , editPost
-    , uploadImage
-    , getImageInfo
-    , updateImageInfo
-    , deleteImageInfo
+    ( serve
+    , routes
     ) where
 
-import Data.Text
+import Data.Text.Lazy.Builder
+import qualified Data.Text as DT
 import Data.Maybe
+import qualified Data.Aeson as DA
 import Database.SQLite.Simple
 import Web.Scotty
-import Lucid
+import qualified Network.HTTP.Types as NT
 import qualified Madf.Blog.Post as Post
-import qualified Madf.Blog.Image as Image
 import Madf.Blog.Ids
+import Madf.Blog.Utils
+import qualified Madf.Blog.Pages as Pages
+import qualified Madf.Blog.API as API
 
-template :: Html () -> Html ()
-template b = html_ $ do
-    head_ $ do
-        title_ "Madf's blog - Administrative interface"
-    body_ $ do
-        h1_ "Madf's blog - Administrative interface"
-        hr_ []
-        b
-        hr_ []
-        p_ "Copyright 2025 Maksym Mamontov"
+serve :: IO ()
+serve = do
+    conn <- open "test.db"
+    scotty 3000 (routes conn)
 
-mainPage :: [Post.Post] -> Html ()
-mainPage posts = template $ do
-    ul_ $ do
-        mapM_ renderPost posts
+routes :: Connection -> ScottyM ()
+routes conn = do
+    pages conn
+    api conn
 
-renderPost :: Post.Post -> Html ()
-renderPost p = li_ $ do
-    h4_ (toHtml $ Post.postTitle p)
-    div_ (exerpt p)
+pages :: Connection -> ScottyM ()
+pages conn = do
+    get    "/admin" $ do
+        page <- queryParamMaybe "page"
+        perPage <- queryParamMaybe "perPage"
+        posts <- liftIO $ Post.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
+        lucid (Pages.mainPage posts)
+    get    "/admin/new" $ lucid Pages.newPost
+    post   "/admin/new" $ do
+        t <- formParam "title"
+        c <- formParam "contents"
+        case DA.eitherDecode c of
+            Right bs -> do
+                liftIO $ Post.create conn t bs
+                redirect "/admin"
+            Left m -> do
+                status NT.badRequest400
+                lucid $ Pages.badRequest (DT.pack m)
+    get    "/admin/edit/:postId" $ do
+        i <- pathParam "postId"
+        mp <- liftIO $ Post.get conn i
+        case mp of
+            Just p -> lucid $ Pages.editPost p
+            Nothing -> do
+                status NT.notFound404
+                lucid $ Pages.notFound "Unknown post id"
+    put    "/admin/edit/:postId" $ do
+        i <- pathParam "postId"
+        t <- formParam "title"
+        c <- formParam "contents"
+        d <- formParam "draft"
+        case DA.eitherDecode c of
+            Right bs -> do
+                liftIO $ Post.update conn i t bs d
+                redirect $ toLazyText ("/admin/edit/" <> fromId i)
+            Left m -> do
+                status NT.badRequest400
+                lucid $ Pages.badRequest (DT.pack m)
+    delete "/admin/edit/:postId" $ pathParam "postId" >>= liftIO .Post.delete conn >> redirect "/admin"
 
-exerpt :: Post.Post -> Html ()
-exerpt p = exerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)
-
-exerpt' :: Maybe Image.Image -> Maybe Text -> Html ()
-exerpt' Nothing Nothing = return ()
-exerpt' (Just image) Nothing = div_ $ previewImage image
-exerpt' Nothing (Just t) = p_ $ toHtml t
-exerpt' (Just image) (Just t) = do
-    div_ $ previewImage image
-    p_ $ toHtml t
-
-previewImage :: Image.Image -> Html ()
-previewImage i = img_ [src_ (Image.previewUrl i), width_ (pack . show $ Image.imagePreviewWidth i), height_ (pack . show $ Image.imagePreviewHeight i), alt_ (Image.imageCaption i)]
-
-firstImage :: [Post.Block] -> Maybe Image.Image
-firstImage = listToMaybe . catMaybes . fmap extractFirstImage
-
-extractFirstImage :: Post.Block -> Maybe Image.Image
-extractFirstImage = \case
-    (Post.CarouselBlock imgs) -> listToMaybe imgs
-    _ -> Nothing
-
-firstTextBlock :: [Post.Block] -> Maybe Text
-firstTextBlock = listToMaybe . catMaybes . fmap extractText
-
-extractText :: Post.Block -> Maybe Text
-extractText = \case
-    (Post.TextBlock t) -> Just t
-    _ -> Nothing
-
-newPost :: Html ()
-newPost = template $ postForm "" [] True
-
-editPost :: Post.Post -> Html ()
-editPost p = template $ postForm (Post.postTitle p) (Post.postContent p) (Post.postIsDraft p)
-
-postForm :: Text -> [Post.Block] -> Bool -> Html ()
-postForm t c isd = form_ $ do
-    form_ $ do
-        input_ [hidden_ "", type_ "text", name_ "content", id_ "content"]
-        with div_ [class_ "header"] $ do
-            with label_ [for_ "title"] "Title"
-            input_ [type_ "text", name_ "title", id_ "title", required_ "", value_ t]
-        with div_ [class_ "editor"] $ do
-            with div_ [id_ "blocksContainer"] $ do
-                mapM_ renderBlock c
-            with div_ [class_ "add-buttons"] $ do
-                with button_ [class_ "btn btn-primary"] "Add paragraph"
-                with button_ [class_ "btn btn-primary"] "Add carousel"
-            with div_ [class_ "save-section"] $ do
-                with button_ [class_ "btn btn-secondary"] "Save draft"
-                with button_ [class_ "btn btn-primary"] "Publish"
-
-renderBlock :: Post.Block -> Html ()
-renderBlock b = with div_ [class_ "block"] $ do
-    blockHeader
-    with div_ [class_ "block-content"] $ do
-        case b of
-            Post.TextBlock t -> renderTextBlock t
-            Post.CarouselBlock is -> renderCarousel is
-
-renderTextBlock :: Text -> Html ()
-renderTextBlock t = with div_ [class_ "text-block"] $ textarea_ $ toHtml t
-
-renderCarousel :: [Image.Image] -> Html ()
-renderCarousel is = with div_ [class_ "carousel-block"] $ do
-    with div_ [class_ "image-upload"] $ do
-        with label_ [for_ "upload_", class_ "upload-btn"] "📁 Upload Image"
-        input_ [type_ "file", id_ "upload_", multiple_ "", accept_ "image/*"]
-    case is of
-        [] -> return ()
-        _ -> with div_ [class_ "images-grid"] $ do
-            mapM_ renderImage is
-
-blockHeader :: Html ()
-blockHeader = with div_ [class_ "block-header"] $ do
-    with span_ [class_ "block-type"] "Text block"
-    with div_ [class_ "block-conttrols"] $ do
-        with button_ [class_ "btn btn-small btn-secondary"] "↑"
-        with button_ [class_ "btn btn-small btn-secondary"] "↓"
-        with button_ [class_ "btn btn-small btn-danger"] "x"
-
-renderImage :: Image.Image -> Html ()
-renderImage i = with div_ [class_ "image-item"] $ do
-    img_ [src_ (Image.imageUrl i), alt_ (Image.imageCaption i), class_ "image-preview"]
-    with div_ [class_ "image-caption"] $ do
-        input_ [type_ "text", value_ (Image.imageCaption i)]
-    with div_ [class_ "image-controls"] $ do
-        small_ $ toHtml (Image.imageFileName i)
-        with button_ [class_ "btn btn-small btn-danger"] "x"
-
-
-uploadImage = undefined
-getImageInfo = undefined
-updateImageInfo = undefined
-deleteImageInfo = undefined
+api :: Connection -> ScottyM ()
+api conn = do
+    post   "/admin/api/image" $ files >>= liftIO . API.uploadImage conn >>= json
+    get    "/admin/api/image/:imageId" $ pathParam "imageId" >>= liftIO . API.getImageInfo conn >>= json
+    put    "/admin/api/image/:imageId" $ do
+        i <- pathParam "imageId"
+        c <- formParam "caption"
+        liftIO $ API.updateImageInfo conn i c
+    delete "/admin/api/image/:imageId" $ pathParam "imageId" >>= liftIO . API.deleteImageInfo conn
