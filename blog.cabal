@@ -1,0 +1,108 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.37.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           blog
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/blog#readme>
+homepage:       https://github.com/madf/blog#readme
+bug-reports:    https://github.com/madf/blog/issues
+author:         Maksym Mamontov
+maintainer:     blog@madf.info
+copyright:      2025 Maksym Mamontov
+license:        BSD-3-Clause
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/madf/blog
+
+library
+  exposed-modules:
+      Lib
+      Madf.Blog
+      Madf.Blog.Ids
+      Madf.Blog.Image
+      Madf.Blog.Post
+      Madf.Blog.Utils
+  other-modules:
+      Paths_blog
+  autogen-modules:
+      Paths_blog
+  hs-source-dirs:
+      src
+  default-extensions:
+      OverloadedStrings LambdaCase
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , bytestring
+    , lucid
+    , scotty
+    , sqlite-simple
+    , text
+    , time
+    , wai
+    , warp
+  default-language: Haskell2010
+
+executable blog-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_blog
+  autogen-modules:
+      Paths_blog
+  hs-source-dirs:
+      app
+  default-extensions:
+      OverloadedStrings LambdaCase
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , base
+    , blog
+    , bytestring
+    , lucid
+    , scotty
+    , sqlite-simple
+    , text
+    , time
+    , wai
+    , warp
+  default-language: Haskell2010
+
+test-suite blog-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_blog
+  autogen-modules:
+      Paths_blog
+  hs-source-dirs:
+      test
+  default-extensions:
+      OverloadedStrings LambdaCase
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , base
+    , blog
+    , bytestring
+    , hspec
+    , hspec-wai
+    , hspec-wai-json
+    , lucid
+    , scotty
+    , sqlite-simple
+    , text
+    , time
+    , wai
+    , warp
+  default-language: Haskell2010
