@@ -90,22 +90,27 @@ instance FromJSON Post
             <*> o .: "is_draft"
 
 create :: Connection -> Text -> [Block] -> IO ()
-create = undefined
+create conn t bs = do
+    now <- getCurrentTime
+    void $ execute conn "INSERT INTO posts (title, content, is_draft, created, updated) VALUES (?, ?, ?, ?, ?)" (t, content, True, now, now)
+    where
+        content = encode bs
 
 get :: Connection -> PostId -> IO (Maybe Post)
-get = undefined
+get conn pid = fmap makePost . listToMaybe <$> query conn "SELECT id, created, updated, title, content, is_draft" (Only pid)
 
 update :: Connection -> PostId -> Text -> [Block] -> Bool -> IO ()
-update = undefined
+update conn pid t bs isd = do
+    now <- getCurrentTime
+    void $ execute conn "UPDATE posts SET title = ?, content = ?, is_draft = ? WHERE id = ?" (t, content, isd, pid)
+    where
+        content = encode bs
 
 delete :: Connection -> PostId -> IO ()
-delete = undefined
-
-publish :: Connection -> PostId -> IO ()
-publish = undefined
-
-hide :: Connection -> PostId -> IO ()
-hide = undefined
+delete conn pid = void $ execute conn "DELETE FROM posts WHERE id = ?" (Only pid)
 
 list :: Connection -> Int -> Int -> IO [Post]
-list = undefined
+list conn page perPage = fmap makePost <$> query conn "SELECT id, created, updated, title, content, is_draft LIMIT ? OFFSET ?" (perPage, page * perPage)
+
+makePost :: (PostId, UTCTime, UTCTime, Text, ByteString, Bool) -> Post
+makePost (pid, created, updated, t, c, isd) = Post

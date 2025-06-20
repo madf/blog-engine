@@ -65,6 +65,14 @@ pages conn = do
                 status NT.badRequest400
                 lucid $ Pages.badRequest (DT.pack m)
     delete "/admin/edit/:postId" $ pathParam "postId" >>= liftIO .Post.delete conn >> redirect "/admin"
+    get    "/admin/preview/:postId" $ do
+        i <- pathParam "postId"
+        mp <- liftIO $ Post.get conn i
+        case mp of
+            Just p -> lucid $ Pages.previewPost p
+            Nothing -> do
+                status NT.notFound404
+                lucid $ Pages.notFound "Unknown post id"
 
 api :: Connection -> ScottyM ()
 api conn = do

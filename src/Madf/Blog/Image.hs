@@ -10,6 +10,7 @@ module Madf.Blog.Image
     , listOrphaned
     , previewUrl
     , imageUrl
+    , imagePreviewUrl
     ) where
 
 import Data.Text
@@ -122,3 +123,6 @@ previewUrl i = imageUrlPrefix i <> "/" <> imagePreviewFileName i
 
 imageUrl :: Image -> Text
 imageUrl i = imageUrlPrefix i <> "/" <> imageFileName i
+
+imagePreviewUrl :: Image -> Text
+imagePreviewUrl i = imageUrlPrefix i <> "/" <> imagePreviewFileName i
