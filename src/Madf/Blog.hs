@@ -10,19 +10,23 @@ import qualified Data.Aeson as DA
 import Database.SQLite.Simple
 import Web.Scotty
 import qualified Network.HTTP.Types as NT
+import Network.Wai.Middleware.Static
 import qualified Madf.Blog.Post as Post
 import Madf.Blog.Ids
 import Madf.Blog.Utils
 import qualified Madf.Blog.Pages as Pages
 import qualified Madf.Blog.API as API
+import qualified Madf.Blog.DB as DB
 
 serve :: IO ()
 serve = do
+    DB.check
     conn <- open "test.db"
     scotty 3000 (routes conn)
 
 routes :: Connection -> ScottyM ()
 routes conn = do
+    middleware $ staticPolicy (noDots >-> addBase "static")
     pages conn
     api conn
 

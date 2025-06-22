@@ -5,13 +5,15 @@ module Madf.Blog.Post
     , get
     , update
     , delete
-    , publish
-    , hide
     , list
     ) where
 
+import Control.Monad
 import Data.Text
+import Data.Text.Encoding
+import qualified Data.ByteString.Lazy as LBS
 import Data.Time
+import Data.Maybe
 import Data.Aeson
 import Data.Aeson.Types
 import Database.SQLite.Simple
@@ -97,7 +99,7 @@ create conn t bs = do
         content = encode bs
 
 get :: Connection -> PostId -> IO (Maybe Post)
-get conn pid = fmap makePost . listToMaybe <$> query conn "SELECT id, created, updated, title, content, is_draft" (Only pid)
+get conn pid = fmap makePost . listToMaybe <$> query conn "SELECT id, created, updated, title, content, is_draft FROM posts WHERE id = ?" (Only pid)
 
 update :: Connection -> PostId -> Text -> [Block] -> Bool -> IO ()
 update conn pid t bs isd = do
@@ -110,7 +112,9 @@ delete :: Connection -> PostId -> IO ()
 delete conn pid = void $ execute conn "DELETE FROM posts WHERE id = ?" (Only pid)
 
 list :: Connection -> Int -> Int -> IO [Post]
-list conn page perPage = fmap makePost <$> query conn "SELECT id, created, updated, title, content, is_draft LIMIT ? OFFSET ?" (perPage, page * perPage)
+list conn page perPage = fmap makePost <$> query conn "SELECT id, created, updated, title, content, is_draft FROM posts LIMIT ? OFFSET ?" (perPage, page * perPage)
 
-makePost :: (PostId, UTCTime, UTCTime, Text, ByteString, Bool) -> Post
-makePost (pid, created, updated, t, c, isd) = Post
+makePost :: (PostId, UTCTime, UTCTime, Text, LBS.ByteString, Bool) -> Post
+makePost (pid, created, updated, t, c, isd) = Post pid created updated t (fromMaybe dataError $ decode c) isd
+    where
+        dataError = [TextBlock "Data error", TextBlock (decodeUtf8 $ LBS.toStrict c)]

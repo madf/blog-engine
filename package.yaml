@@ -25,6 +25,7 @@ dependencies:
 - scotty
 - lucid
 - wai
+- wai-middleware-static
 - warp
 - http-types
 - sqlite-simple
