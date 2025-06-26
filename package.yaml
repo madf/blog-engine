@@ -26,12 +26,17 @@ dependencies:
 - lucid
 - wai
 - wai-middleware-static
+- wai-extra
 - warp
 - http-types
 - sqlite-simple
 - bytestring
 - text
 - time
+- config-ini
+- JuicyPixels
+- JuicyPixels-extra
+- directory
 
 ghc-options:
 - -Wall

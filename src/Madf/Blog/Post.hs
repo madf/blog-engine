@@ -23,7 +23,7 @@ import qualified Madf.Blog.Image as Image
 data Post = Post
     { postId      :: !PostId
     , postCreated :: !UTCTime
-    , postUpdated :: !UTCTime
+    , postUpdated :: !(Maybe UTCTime)
     , postTitle   :: !Text
     , postContent :: ![Block]
     , postIsDraft :: !Bool
@@ -114,7 +114,7 @@ delete conn pid = void $ execute conn "DELETE FROM posts WHERE id = ?" (Only pid
 list :: Connection -> Int -> Int -> IO [Post]
 list conn page perPage = fmap makePost <$> query conn "SELECT id, created, updated, title, content, is_draft FROM posts LIMIT ? OFFSET ?" (perPage, page * perPage)
 
-makePost :: (PostId, UTCTime, UTCTime, Text, LBS.ByteString, Bool) -> Post
+makePost :: (PostId, UTCTime, Maybe UTCTime, Text, LBS.ByteString, Bool) -> Post
 makePost (pid, created, updated, t, c, isd) = Post pid created updated t (fromMaybe dataError $ decode c) isd
     where
         dataError = [TextBlock "Data error", TextBlock (decodeUtf8 $ LBS.toStrict c)]

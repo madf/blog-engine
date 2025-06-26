@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Madf.Blog.Image
     ( Image (..)
     , create
@@ -11,15 +14,27 @@ module Madf.Blog.Image
     , previewUrl
     , imageUrl
     , imagePreviewUrl
+    , loadImage
     ) where
 
+import GHC.Generics
 import Data.Text
+import Data.Text.Encoding
 import Data.Time
-import Data.ByteString
+import qualified Data.ByteString as BS
 import Data.Int
+import Data.Maybe
 import Data.Aeson
 import Database.SQLite.Simple
+import Database.SQLite.Simple.ToField
+import Web.Scotty (File)
+import Network.Wai.Parse (FileInfo (..))
+import qualified Codec.Picture as CP
+import qualified Codec.Picture.Metadata as CP
+import qualified Codec.Picture.Extra as CPE
 import Madf.Blog.Ids
+import Madf.Blog.Config
+import Madf.Blog.Files
 
 data Image = Image
     { imageId              :: !ImageId
@@ -35,8 +50,8 @@ data Image = Image
     , imagePreviewWidth    :: !Int
     , imagePreviewHeight   :: !Int
     , imageCreated         :: !UTCTime
-    , imageUpdated         :: !UTCTime
-    } deriving (Show)
+    , imageUpdated         :: !(Maybe UTCTime)
+    } deriving (Show, Generic, FromRow)
 
 instance ToJSON Image
     where
@@ -91,13 +106,21 @@ instance FromJSON Image
             <*> o .: "created"
             <*> o .: "updated"
 
-create :: Connection -> ByteString -> IO Image
+
+instance (ToField a, ToField b, ToField c, ToField d, ToField e, ToField f,
+          ToField g, ToField h, ToField i, ToField j, ToField k)
+    => ToRow (a,b,c,d,e,f,g,h,i,j,k) where
+    toRow (a,b,c,d,e,f,g,h,i,j,k) =
+        [toField a, toField b, toField c, toField d, toField e, toField f,
+         toField g, toField h, toField i, toField j, toField k]
+
+create :: Connection -> BS.ByteString -> IO Image
 create = undefined
 
 get :: Connection -> ImageId -> IO (Maybe Image)
 get = undefined
 
-updateFile :: Connection -> ImageId -> ByteString -> IO Image
+updateFile :: Connection -> ImageId -> BS.ByteString -> IO Image
 updateFile = undefined
 
 updateCaption :: Connection -> ImageId -> Text -> IO Image
@@ -126,3 +149,62 @@ imageUrl i = imageUrlPrefix i <> "/" <> imageFileName i
 
 imagePreviewUrl :: Image -> Text
 imagePreviewUrl i = imageUrlPrefix i <> "/" <> imagePreviewFileName i
+
+scaleToHeight :: Int -> CP.Image CP.PixelRGBA8 -> CP.Image CP.PixelRGBA8
+scaleToHeight dh img = CPE.scaleBilinear (w * dh `div` h) dh img
+    where
+        w = CP.imageWidth img
+        h = CP.imageHeight img
+
+createPreview :: Int -> Int -> Text -> CP.Metadatas -> CP.DynamicImage -> IO (Int, Int)
+createPreview jq dh pfp md img = do
+    let simg = scaleToHeight dh (CP.convertRGBA8 img)
+    save $ CP.ImageRGBA8 simg
+    return (CP.imageWidth simg, CP.imageHeight simg)
+    where
+        save simg = case CP.lookup CP.Format md of
+            Just CP.SourceJpeg -> CP.saveJpgImage jq (unpack pfp) simg
+            Just CP.SourcePng  -> CP.savePngImage (unpack pfp) simg
+            v                  -> error $ "Unsupported image format: '" ++ show v ++ "'"
+
+loadImage :: Connection -> Config -> PostId -> File BS.ByteString -> IO Image
+loadImage conn conf pid (_, fi) = do
+    (md, img) <- prepareImage sfn fi
+    (pw, ph) <- createPreview jq dph spn md img
+    fs <- getSize sfn
+    ps <- getSize spn
+    now <- getCurrentTime
+    miid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO images (post_id, caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated) VALUES (?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL) RETURNING id" (pid, fn, fs, (width img), (height img), mime, pn, ps, pw, ph, now) :: IO (Maybe ImageId)
+    case miid of
+        Nothing -> cleanup "Cannot insert image into the DB"
+        Just iid -> do
+            mi <- listToMaybe <$> query conn "SELECT id, post_id, caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated FROM images WHERE id = ?" (Only iid)
+            case mi of
+                Nothing -> cleanup "Cannot read image from the DB"
+                Just i -> return i
+    where
+        fn = decodeUtf8 $ fileName fi
+        pn = "preview-" <> fn
+        std = storageDir $ images conf
+        stp = std <> toText pid
+        sfn = stp <> "/" <> fn
+        spn = stp <> "/" <> pn
+        width = CP.dynamicMap CP.imageWidth
+        height = CP.dynamicMap CP.imageHeight
+        dph = previewHeight $ images conf
+        jq = jpegQuality $ images conf
+        mime = decodeUtf8 $ fileContentType fi
+        cleanup m = do
+            removeIfExists sfn
+            removeIfExists spn
+            error m
+
+prepareImage :: Text -> FileInfo BS.ByteString -> IO (CP.Metadatas, CP.DynamicImage)
+prepareImage fn fi = do
+    BS.writeFile (unpack fn) cnt
+    r <- CP.readImageWithMetadata (unpack fn)
+    case r of
+        Left e -> error e
+        Right (img, md) -> return (md, img)
+    where
+        cnt = fileContent fi
