@@ -5,12 +5,15 @@
 module Madf.Blog.Ids
     ( makeId
     , fromId
+    , toText
     , PostId
     , ImageId
     ) where
 
 import Data.Int (Int64)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Text
+import Data.Text.Lazy (toStrict)
 import Data.Text.Lazy.Builder
 import Data.Text.Lazy.Builder.Int
 import Database.SQLite.Simple.FromField
@@ -26,6 +29,9 @@ makeId = Id
 
 fromId :: Id a -> Builder
 fromId (Id v) = decimal v
+
+toText :: Id a -> Text
+toText = toStrict . toLazyText . fromId
 
 type PostId = Id 'Post
 type ImageId = Id 'Image
