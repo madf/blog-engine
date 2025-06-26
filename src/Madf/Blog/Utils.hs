@@ -1,6 +1,7 @@
 module Madf.Blog.Utils
     ( lucid
     , timeToText
+    , mapLeft
     ) where
 
 import Data.Text
@@ -16,3 +17,8 @@ lucid h = do
 
 timeToText :: UTCTime -> Text
 timeToText = pack . formatTime defaultTimeLocale "%F %T"
+
+mapLeft :: (a -> b) -> Either a c -> Either b c
+mapLeft f = \case
+    Left v -> Left (f v)
+    Right v -> Right v
