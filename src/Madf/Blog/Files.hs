@@ -3,14 +3,14 @@ module Madf.Blog.Files
     , removeIfExists
     ) where
 
-import Prelude hiding (catch)
 import System.Directory
 import Control.Exception
 import System.IO
-import System.IO.Error hiding (catch)
+import System.IO.Error
 import Data.Text
+import Data.Int
 
-getSize :: Text -> IO Int
+getSize :: Text -> IO Int64
 getSize f = fromInteger <$> withFile (unpack f) ReadMode hFileSize
 
 removeIfExists :: Text -> IO ()

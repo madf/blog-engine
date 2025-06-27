@@ -26,7 +26,6 @@ import Data.Int
 import Data.Maybe
 import Data.Aeson
 import Database.SQLite.Simple
-import Database.SQLite.Simple.ToField
 import Web.Scotty (File)
 import Network.Wai.Parse (FileInfo (..))
 import qualified Codec.Picture as CP
@@ -38,7 +37,7 @@ import Madf.Blog.Files
 
 data Image = Image
     { imageId              :: !ImageId
-    , imagePostId          :: !(Maybe Int64)
+    , imagePostId          :: !PostId
     , imageCaption         :: !Text
     , imageFileName        :: !Text
     , imageFileSize        :: !Int64
@@ -106,13 +105,10 @@ instance FromJSON Image
             <*> o .: "created"
             <*> o .: "updated"
 
+data Info = Info !PostId !Text !Int64 !Int !Int !Text !Text !Int64 !Int !Int !UTCTime deriving (Show, Generic, ToRow)
 
-instance (ToField a, ToField b, ToField c, ToField d, ToField e, ToField f,
-          ToField g, ToField h, ToField i, ToField j, ToField k)
-    => ToRow (a,b,c,d,e,f,g,h,i,j,k) where
-    toRow (a,b,c,d,e,f,g,h,i,j,k) =
-        [toField a, toField b, toField c, toField d, toField e, toField f,
-         toField g, toField h, toField i, toField j, toField k]
+fromInfo :: ImageId -> Info -> Image
+fromInfo iid (Info pid fn fs w h mime pfn pfs pw ph c) = Image iid pid "" fn fs w h mime pfn pfs pw ph c Nothing
 
 create :: Connection -> BS.ByteString -> IO Image
 create = undefined
@@ -174,14 +170,10 @@ loadImage conn conf pid (_, fi) = do
     fs <- getSize sfn
     ps <- getSize spn
     now <- getCurrentTime
-    miid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO images (post_id, caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated) VALUES (?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL) RETURNING id" (pid, fn, fs, (width img), (height img), mime, pn, ps, pw, ph, now) :: IO (Maybe ImageId)
-    case miid of
-        Nothing -> cleanup "Cannot insert image into the DB"
-        Just iid -> do
-            mi <- listToMaybe <$> query conn "SELECT id, post_id, caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated FROM images WHERE id = ?" (Only iid)
-            case mi of
-                Nothing -> cleanup "Cannot read image from the DB"
-                Just i -> return i
+    ri <- createImage conn (Info pid fn fs (width img) (height img) mime pn ps pw ph now)
+    case ri of
+        Left e -> cleanup e
+        Right i -> return i
     where
         fn = decodeUtf8 $ fileName fi
         pn = "preview-" <> fn
@@ -197,7 +189,14 @@ loadImage conn conf pid (_, fi) = do
         cleanup m = do
             removeIfExists sfn
             removeIfExists spn
-            error m
+            error (unpack m)
+
+createImage :: Connection -> Info -> IO (Either Text Image)
+createImage conn info = do
+    miid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO images (post_id, caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated) VALUES (?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL) RETURNING id" info :: IO (Maybe ImageId)
+    case miid of
+        Nothing -> return $ Left "Cannot insert image into the DB"
+        Just iid -> return $ Right (fromInfo iid info)
 
 prepareImage :: Text -> FileInfo BS.ByteString -> IO (CP.Metadatas, CP.DynamicImage)
 prepareImage fn fi = do

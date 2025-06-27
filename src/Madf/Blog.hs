@@ -80,10 +80,22 @@ pages conn = do
 
 api :: Connection -> ScottyM ()
 api conn = do
-    post   "/admin/api/image" $ files >>= liftIO . API.uploadImage conn >>= json
     get    "/admin/api/image/:imageId" $ pathParam "imageId" >>= liftIO . API.getImageInfo conn >>= json
     put    "/admin/api/image/:imageId" $ do
         i <- pathParam "imageId"
         c <- formParam "caption"
         liftIO $ API.updateImageInfo conn i c
     delete "/admin/api/image/:imageId" $ pathParam "imageId" >>= liftIO . API.deleteImageInfo conn
+    post   "/admin/api/post" $ liftIO (API.newPost conn) >>= json
+    get    "/admin/api/post/:postId" $ pathParam "postId" >>= liftIO . API.getPostInfo conn >>= json
+    put    "/admin/api/post/:postId" $ do
+        i <- pathParam "postId"
+        cap <- formParam "caption"
+        cont <- formParam "contents"
+        liftIO $ API.updatePostInfo conn i cap cont
+    delete "/admin/api/post/:postId" $ pathParam "postId" >>= liftIO . API.deletePostInfo conn
+    post   "/admin/api/post/:postId/image" $ do
+        i <- pathParam "postId"
+        fs <- files
+        r <- liftIO $ API.uploadImage conn i fs
+        json r
