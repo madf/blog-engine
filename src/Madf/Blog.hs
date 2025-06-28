@@ -14,7 +14,9 @@ import Web.Scotty.Trans as WS
 import qualified Network.HTTP.Types as NT
 import Network.Wai.Middleware.Static
 import qualified Madf.Blog.Post as Post
+import qualified Madf.Blog.Image as Image
 import qualified Madf.Blog.Env as Env
+import Madf.Blog.Config
 import Madf.Blog.Ids
 import qualified Madf.Blog.Pages as Pages
 import qualified Madf.Blog.API as API
@@ -31,8 +33,8 @@ withConn f = do
     pool <- askPool
     liftIO $ withResource pool f
 
---askConfig :: App C.Config
---askConfig = lift $ asks config
+askConfig :: ActionT Env.EnvM Config
+askConfig = lift $ asks Env.config
 
 serve :: Env.Env -> IO ()
 serve env = do
@@ -103,6 +105,11 @@ pages = do
 
 api :: App ()
 api = do
+    imageAPI
+    postAPI
+
+imageAPI :: App ()
+imageAPI = do
     get    "/admin/api/image/:imageId" $ do
         iid <- pathParam "imageId"
         r <- withConn (`API.getImageInfo` iid)
@@ -110,27 +117,39 @@ api = do
     put    "/admin/api/image/:imageId" $ do
         i <- pathParam "imageId"
         c <- formParam "caption"
-        withConn (\conn -> API.updateImageInfo conn i c)
+        withConn  $ \conn -> API.updateImageInfo conn i c
     delete "/admin/api/image/:imageId" $ do
         iid <- pathParam "imageId"
         withConn (`API.deleteImageInfo` iid)
+
+postAPI :: App ()
+postAPI = do
     post   "/admin/api/post" $ do
-        r <- withConn API.newPost
-        json r
+        t <- formParam "title"
+        c <- formParam "contents"
+        case DA.eitherDecode c of
+            Right bs -> do
+                r <- withConn $ \conn -> Post.create conn t bs
+                json r
+            Left m -> status NT.badRequest400 >> json m
     get    "/admin/api/post/:postId" $ do
         pid <- pathParam "postId"
-        r <- withConn $ \conn -> API.getPostInfo conn pid
+        r <- withConn $ \conn -> Post.get conn pid
         json r
     put    "/admin/api/post/:postId" $ do
         i <- pathParam "postId"
-        cap <- formParam "caption"
-        cont <- formParam "contents"
-        withConn (\conn -> API.updatePostInfo conn i cap cont)
+        t <- formParam "title"
+        c <- formParam "contents"
+        d <- formParam "draft"
+        case DA.eitherDecode c of
+            Right bs -> withConn $ \conn -> Post.update conn i t bs d
+            Left m -> status NT.badRequest400 >> json m
     delete "/admin/api/post/:postId" $ do
         pid <- pathParam "postId"
-        withConn $ \conn -> API.deletePostInfo conn pid
+        withConn $ \conn -> Post.delete conn pid
     post   "/admin/api/post/:postId/image" $ do
         i <- pathParam "postId"
         fs <- files
-        r <- withConn (\conn -> API.uploadImage conn i fs)
+        conf <- askConfig
+        r <- withConn $ \conn -> mapM (Image.upload conn conf i) fs
         json r

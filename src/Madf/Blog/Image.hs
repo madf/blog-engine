@@ -3,25 +3,24 @@
 
 module Madf.Blog.Image
     ( Image (..)
-    , create
     , get
     , updateFile
     , updateCaption
     , delete
     , listByPost
     , deleteByPost
-    , listOrphaned
     , previewUrl
     , imageUrl
     , imagePreviewUrl
-    , loadImage
+    , upload
     ) where
 
 import GHC.Generics
+import Control.Monad
 import Data.Text
 import Data.Text.Encoding
 import Data.Time
-import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BS
 import Data.Int
 import Data.Maybe
 import Data.Aeson
@@ -110,29 +109,32 @@ data Info = Info !PostId !Text !Int64 !Int !Int !Text !Text !Int64 !Int !Int !UT
 fromInfo :: ImageId -> Info -> Image
 fromInfo iid (Info pid fn fs w h mime pfn pfs pw ph c) = Image iid pid "" fn fs w h mime pfn pfs pw ph c Nothing
 
-create :: Connection -> BS.ByteString -> IO Image
-create = undefined
-
 get :: Connection -> ImageId -> IO (Maybe Image)
-get = undefined
+get conn iid = listToMaybe <$> query conn "SELECT id, post_id caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated FROM images WHERE id = ?" (Only iid)
 
-updateFile :: Connection -> ImageId -> BS.ByteString -> IO Image
+updateFile :: Connection -> ImageId -> File BS.ByteString -> IO Image
 updateFile = undefined
 
 updateCaption :: Connection -> ImageId -> Text -> IO Image
 updateCaption = undefined
 
 delete :: Connection -> ImageId -> IO ()
-delete = undefined
+delete conn iid = do
+    mfs <- listToMaybe <$> query conn "SELECT file_name, preview_file_name FROM images WHERE id = ?" (Only iid)
+    case mfs of
+        Nothing -> return ()
+        Just (sfn, spn) -> do
+            removeFiles sfn spn
+            void $ execute conn "DELETE FROM images WHERE id = ?" (Only iid)
 
 listByPost :: Connection -> PostId -> IO [Image]
-listByPost = undefined
+listByPost conn pid = query conn "SELECT id, post_id caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated FROM images WHERE post_id = ?" (Only pid)
 
 deleteByPost :: Connection -> PostId -> IO ()
-deleteByPost = undefined
-
-listOrphaned :: Connection -> IO [Image]
-listOrphaned = undefined
+deleteByPost conn pid = do
+    fs <- query conn "SELECT file_name, preview_file_name FROM images WHERE post_id = ?" (Only pid)
+    mapM_ (\(sfn, spn) -> removeFiles sfn spn) fs
+    void $ execute conn "DELETE FROM images WHERE post_id = ?" (Only pid)
 
 imageUrlPrefix :: Image -> Text
 imageUrlPrefix i = "/blogimages/" <> (Data.Text.pack . show) (imagePostId i)
@@ -163,8 +165,10 @@ createPreview jq dh pfp md img = do
             Just CP.SourcePng  -> CP.savePngImage (unpack pfp) simg
             v                  -> error $ "Unsupported image format: '" ++ show v ++ "'"
 
-loadImage :: Connection -> Config -> PostId -> File BS.ByteString -> IO Image
-loadImage conn conf pid (_, fi) = do
+upload :: Connection -> Config -> PostId -> File BS.ByteString -> IO Image
+upload conn conf pid (_, fi) = do
+    pe <- checkPId
+    unless pe (error "Unknown post id")
     checkCreateDir stp
     (md, img) <- prepareImage sfn fi
     (pw, ph) <- createPreview jq dph spn md img
@@ -176,6 +180,7 @@ loadImage conn conf pid (_, fi) = do
         Left e -> cleanup e
         Right i -> return i
     where
+        checkPId = or . fmap fromOnly <$> query conn "SELECT EXISTS (SELECT 1 FROM posts WHERE id = ?)" (Only pid)
         fn = decodeUtf8 $ fileName fi
         pn = previewPrefix (images conf) <> fn
         std = storageDir $ images conf
@@ -188,8 +193,7 @@ loadImage conn conf pid (_, fi) = do
         jq = jpegQuality $ images conf
         mime = decodeUtf8 $ fileContentType fi
         cleanup m = do
-            removeIfExists sfn
-            removeIfExists spn
+            removeFiles sfn spn
             error (unpack m)
 
 createImage :: Connection -> Info -> IO (Either Text Image)
@@ -208,3 +212,8 @@ prepareImage fn fi = do
         Right (img, md) -> return (md, img)
     where
         cnt = fileContent fi
+
+removeFiles :: Text -> Text -> IO ()
+removeFiles sfn spn = do
+    removeIfExists sfn
+    removeIfExists spn
