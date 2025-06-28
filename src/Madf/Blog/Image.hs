@@ -106,21 +106,60 @@ instance FromJSON Image
 
 data Info = Info !PostId !Text !Int64 !Int !Int !Text !Text !Int64 !Int !Int !UTCTime deriving (Show, Generic, ToRow)
 
+data UFInfo = UFInfo !Text !Int64 !Int !Int !Text !Text !Int64 !Int !Int !UTCTime !ImageId deriving (Show, Generic, ToRow)
+
 fromInfo :: ImageId -> Info -> Image
 fromInfo iid (Info pid fn fs w h mime pfn pfs pw ph c) = Image iid pid "" fn fs w h mime pfn pfs pw ph c Nothing
 
 get :: Connection -> ImageId -> IO (Maybe Image)
-get conn iid = listToMaybe <$> query conn "SELECT id, post_id caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated FROM images WHERE id = ?" (Only iid)
+get conn iid = listToMaybe <$> query conn "SELECT id, post_id, caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated FROM images WHERE id = ?" (Only iid)
 
-updateFile :: Connection -> ImageId -> File BS.ByteString -> IO Image
-updateFile = undefined
+get' :: Connection -> ImageId -> IO Image
+get' conn iid = do
+    mr <- get conn iid
+    case mr of
+        Just img -> return img
+        Nothing -> error "Unknown image id"
+
+updateFile :: Connection -> Config -> ImageId -> File BS.ByteString -> IO Image
+updateFile conn conf iid (_, fi) = do
+    mimg <- get conn iid
+    case mimg of
+        Nothing -> error "Unknown image id"
+        Just oimg -> do
+            removeFiles (imageFileName oimg) (imagePreviewFileName oimg)
+            let pid = imagePostId oimg
+            (md, img) <- prepareImage (sfn pid) fi
+            (pw, ph) <- createPreview jq dph (spn pid) md img
+            fs <- getSize (sfn pid)
+            ps <- getSize (spn pid)
+            now <- getCurrentTime
+            void $ execute conn "UPDATE images SET file_name = ?, file_size = ?, width = ?, height = ?, mime_type = ?, preview_file_name = ?, preview_file_size = ?, preview_width = ?, preview_height = ?, updated = ? WHERE id = ?" (UFInfo fn fs (width img) (height img) mime pn ps pw ph now iid)
+            get' conn iid
+    where
+        fn = decodeUtf8 $ fileName fi
+        pn = previewPrefix (images conf) <> fn
+        std = storageDir $ images conf
+        stp pid = std <> toText pid
+        sfn pid = stp pid <> "/" <> fn
+        spn pid = stp pid <> "/" <> pn
+        width = CP.dynamicMap CP.imageWidth
+        height = CP.dynamicMap CP.imageHeight
+        dph = previewHeight $ images conf
+        jq = jpegQuality $ images conf
+        mime = decodeUtf8 $ fileContentType fi
 
 updateCaption :: Connection -> ImageId -> Text -> IO Image
-updateCaption = undefined
+updateCaption conn iid cap = do
+    void $ execute conn "UPDATE images SET caption = ? WHERE id = ?" (cap, iid)
+    get' conn iid
+
+getFiles :: Connection -> ImageId -> IO (Maybe (Text, Text))
+getFiles conn iid = listToMaybe <$> query conn "SELECT file_name, preview_file_name FROM images WHERE id = ?" (Only iid)
 
 delete :: Connection -> ImageId -> IO ()
 delete conn iid = do
-    mfs <- listToMaybe <$> query conn "SELECT file_name, preview_file_name FROM images WHERE id = ?" (Only iid)
+    mfs <- getFiles conn iid
     case mfs of
         Nothing -> return ()
         Just (sfn, spn) -> do
@@ -133,7 +172,7 @@ listByPost conn pid = query conn "SELECT id, post_id caption, file_name, file_si
 deleteByPost :: Connection -> PostId -> IO ()
 deleteByPost conn pid = do
     fs <- query conn "SELECT file_name, preview_file_name FROM images WHERE post_id = ?" (Only pid)
-    mapM_ (\(sfn, spn) -> removeFiles sfn spn) fs
+    mapM_ (uncurry removeFiles) fs
     void $ execute conn "DELETE FROM images WHERE post_id = ?" (Only pid)
 
 imageUrlPrefix :: Image -> Text
@@ -180,7 +219,7 @@ upload conn conf pid (_, fi) = do
         Left e -> cleanup e
         Right i -> return i
     where
-        checkPId = or . fmap fromOnly <$> query conn "SELECT EXISTS (SELECT 1 FROM posts WHERE id = ?)" (Only pid)
+        checkPId = Prelude.any fromOnly <$> query conn "SELECT EXISTS (SELECT 1 FROM posts WHERE id = ?)" (Only pid)
         fn = decodeUtf8 $ fileName fi
         pn = previewPrefix (images conf) <> fn
         std = storageDir $ images conf
