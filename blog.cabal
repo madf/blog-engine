@@ -26,7 +26,6 @@ source-repository head
 library
   exposed-modules:
       Madf.Blog
-      Madf.Blog.API
       Madf.Blog.Config
       Madf.Blog.DB
       Madf.Blog.Env

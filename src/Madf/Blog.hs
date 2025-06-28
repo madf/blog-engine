@@ -19,7 +19,6 @@ import qualified Madf.Blog.Env as Env
 import Madf.Blog.Config
 import Madf.Blog.Ids
 import qualified Madf.Blog.Pages as Pages
-import qualified Madf.Blog.API as API
 import qualified Madf.Blog.DB as DB
 import Lucid
 
@@ -112,15 +111,16 @@ imageAPI :: App ()
 imageAPI = do
     get    "/admin/api/image/:imageId" $ do
         iid <- pathParam "imageId"
-        r <- withConn (`API.getImageInfo` iid)
+        r <- withConn (`Image.get` iid)
         json r
     put    "/admin/api/image/:imageId" $ do
         i <- pathParam "imageId"
         c <- formParam "caption"
-        withConn  $ \conn -> API.updateImageInfo conn i c
+        r <- withConn  $ \conn -> Image.updateCaption conn i c
+        json r
     delete "/admin/api/image/:imageId" $ do
         iid <- pathParam "imageId"
-        withConn (`API.deleteImageInfo` iid)
+        withConn (`Image.delete` iid)
 
 postAPI :: App ()
 postAPI = do
