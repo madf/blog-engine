@@ -8,7 +8,7 @@ module Madf.Blog.Env
     , defaultEnv
     ) where
 
-import Data.Pool
+import Data.Pool hiding (createPool)
 import Data.Text
 import Database.SQLite.Simple
 import Control.Monad.Reader
@@ -27,16 +27,21 @@ newtype EnvM a = EnvM
 runIO :: Env -> EnvM a -> IO a
 runIO env m = runReaderT (runEnvM m) env
 
+createPool :: C.Config -> IO (Pool Connection)
+createPool conf = do
+    let pcfg = defaultPoolConfig (open (unpack . C.path $ C.db conf)) close 3600 10
+    newPool $ setNumStripes (Just 2) pcfg
+
 create :: Text -> IO Env
 create fp = do
     ec <- C.readFile fp
     case ec of
         Left e -> error (unpack e)
         Right c -> do
-            p <- newPool $ defaultPoolConfig (open (unpack . C.path $ C.db c)) close 3600 10
+            p <- createPool c
             return $ Env c p
 
 defaultEnv :: IO Env
 defaultEnv = do
-    p <- newPool $ defaultPoolConfig (open (unpack . C.path $ C.db C.defaultConfig)) close 3600 10
+    p <- createPool C.defaultConfig
     return $ Env C.defaultConfig p
