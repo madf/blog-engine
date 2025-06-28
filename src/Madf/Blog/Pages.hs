@@ -53,7 +53,7 @@ exerpt' (Just image) (Just t) = do
     p_ $ toHtml t
 
 previewImage :: Image.Image -> Html ()
-previewImage i = img_ [src_ (Image.previewUrl i), width_ (pack . show $ Image.imagePreviewWidth i), height_ (pack . show $ Image.imagePreviewHeight i), alt_ (Image.imageCaption i)]
+previewImage i = img_ [src_ (Image.imagePreviewUrl i), width_ (pack . show $ Image.imagePreviewWidth i), height_ (pack . show $ Image.imagePreviewHeight i), alt_ (Image.imageCaption i)]
 
 firstImage :: [Post.Block] -> Maybe Image.Image
 firstImage = listToMaybe . mapMaybe extractFirstImage

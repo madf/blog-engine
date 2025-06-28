@@ -9,7 +9,6 @@ module Madf.Blog.Image
     , delete
     , listByPost
     , deleteByPost
-    , previewUrl
     , imageUrl
     , imagePreviewUrl
     , upload
@@ -177,9 +176,6 @@ deleteByPost conn pid = do
 
 imageUrlPrefix :: Image -> Text
 imageUrlPrefix i = "/blogimages/" <> (Data.Text.pack . show) (imagePostId i)
-
-previewUrl :: Image -> Text
-previewUrl i = imageUrlPrefix i <> "/" <> imagePreviewFileName i
 
 imageUrl :: Image -> Text
 imageUrl i = imageUrlPrefix i <> "/" <> imageFileName i
