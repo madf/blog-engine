@@ -29,6 +29,7 @@ library
       Madf.Blog.API
       Madf.Blog.Config
       Madf.Blog.DB
+      Madf.Blog.Env
       Madf.Blog.Files
       Madf.Blog.Ids
       Madf.Blog.Image
@@ -54,10 +55,14 @@ library
     , directory
     , http-types
     , lucid
-    , scotty
+    , mtl
+    , password
+    , resource-pool
+    , scotty >=0.22
     , sqlite-simple
     , text
     , time
+    , unliftio-core
     , wai
     , wai-extra
     , wai-middleware-static
@@ -86,10 +91,14 @@ executable blog-exe
     , directory
     , http-types
     , lucid
-    , scotty
+    , mtl
+    , password
+    , resource-pool
+    , scotty >=0.22
     , sqlite-simple
     , text
     , time
+    , unliftio-core
     , wai
     , wai-extra
     , wai-middleware-static
@@ -122,10 +131,14 @@ test-suite blog-test
     , hspec-wai-json
     , http-types
     , lucid
-    , scotty
+    , mtl
+    , password
+    , resource-pool
+    , scotty >=0.22
     , sqlite-simple
     , text
     , time
+    , unliftio-core
     , wai
     , wai-extra
     , wai-middleware-static

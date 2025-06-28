@@ -6,9 +6,8 @@ import Control.Monad
 import qualified Data.Text as DT
 import Database.SQLite.Simple
 
-check :: IO ()
-check = do
-    conn <- open "test.db"
+check :: Connection -> IO ()
+check conn = do
     ts <- fmap fromOnly <$> query_ conn "SELECT name FROM sqlite_master" :: IO [DT.Text]
     unless ("posts" `elem` ts) (createPostsTable conn)
 

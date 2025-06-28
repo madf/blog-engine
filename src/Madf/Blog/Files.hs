@@ -1,6 +1,7 @@
 module Madf.Blog.Files
     ( getSize
     , removeIfExists
+    , checkCreateDir
     ) where
 
 import System.Directory
@@ -18,3 +19,6 @@ removeIfExists f = removeFile (unpack f) `catch` handleExists
   where handleExists e
           | isDoesNotExistError e = return ()
           | otherwise = throwIO e
+
+checkCreateDir :: Text -> IO ()
+checkCreateDir p = createDirectoryIfMissing True (unpack p)

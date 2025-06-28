@@ -6,36 +6,53 @@ module Madf.Blog
 import Data.Text.Lazy.Builder
 import qualified Data.Text as DT
 import Data.Maybe
+import Data.Pool
 import qualified Data.Aeson as DA
 import Database.SQLite.Simple
-import Web.Scotty
+import Control.Monad.Reader
+import Web.Scotty.Trans as WS
 import qualified Network.HTTP.Types as NT
 import Network.Wai.Middleware.Static
 import qualified Madf.Blog.Post as Post
+import qualified Madf.Blog.Env as Env
 import Madf.Blog.Ids
-import Madf.Blog.Utils
 import qualified Madf.Blog.Pages as Pages
 import qualified Madf.Blog.API as API
 import qualified Madf.Blog.DB as DB
+import Lucid
+
+type App a = ScottyT Env.EnvM a
+
+askPool :: ActionT Env.EnvM (Pool Connection)
+askPool = lift $ asks Env.pool
+
+--askConfig :: App C.Config
+--askConfig = lift $ asks config
 
 serve :: IO ()
 serve = do
-    DB.check
-    conn <- open "test.db"
-    scotty 3000 (routes conn)
+    env <- Env.create "config.ini"
+    withResource (Env.pool env) DB.check
+    scottyOptsT WS.defaultOptions (Env.runIO env) routes
 
-routes :: Connection -> ScottyM ()
-routes conn = do
+routes :: App ()
+routes = do
     middleware $ staticPolicy (noDots >-> addBase "static")
-    pages conn
-    api conn
+    pages
+    api
 
-pages :: Connection -> ScottyM ()
-pages conn = do
+lucid :: Html a -> ActionT Env.EnvM ()
+lucid h = do
+    setHeader "Content-Type" "text/html"
+    raw (renderBS h)
+
+pages :: App ()
+pages = do
     get    "/admin" $ do
         page <- queryParamMaybe "page"
         perPage <- queryParamMaybe "perPage"
-        posts <- liftIO $ Post.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
+        pool <- askPool
+        posts <- liftIO . withResource pool $ \conn -> Post.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
         lucid (Pages.mainPage posts)
     get    "/admin/new" $ lucid Pages.newPost
     post   "/admin/new" $ do
@@ -43,14 +60,16 @@ pages conn = do
         c <- formParam "contents"
         case DA.eitherDecode c of
             Right bs -> do
-                liftIO $ Post.create conn t bs
+                pool <- askPool
+                liftIO . withResource pool $ \conn -> Post.create conn t bs
                 redirect "/admin"
             Left m -> do
                 status NT.badRequest400
                 lucid $ Pages.badRequest (DT.pack m)
     get    "/admin/edit/:postId" $ do
         i <- pathParam "postId"
-        mp <- liftIO $ Post.get conn i
+        pool <- askPool
+        mp <- liftIO . withResource pool $ \conn -> Post.get conn i
         case mp of
             Just p -> lucid $ Pages.editPost p
             Nothing -> do
@@ -63,39 +82,61 @@ pages conn = do
         d <- formParam "draft"
         case DA.eitherDecode c of
             Right bs -> do
-                liftIO $ Post.update conn i t bs d
+                pool <- askPool
+                liftIO . withResource pool $ \conn -> Post.update conn i t bs d
                 redirect $ toLazyText ("/admin/edit/" <> fromId i)
             Left m -> do
                 status NT.badRequest400
                 lucid $ Pages.badRequest (DT.pack m)
-    delete "/admin/edit/:postId" $ pathParam "postId" >>= liftIO .Post.delete conn >> redirect "/admin"
+    delete "/admin/edit/:postId" $ do
+        pid <- pathParam "postId"
+        pool <- askPool
+        liftIO (withResource pool (`Post.delete` pid)) >> redirect "/admin"
     get    "/admin/preview/:postId" $ do
         i <- pathParam "postId"
-        mp <- liftIO $ Post.get conn i
+        pool <- askPool
+        mp <- liftIO . withResource pool $ \conn -> Post.get conn i
         case mp of
             Just p -> lucid $ Pages.previewPost p
             Nothing -> do
                 status NT.notFound404
                 lucid $ Pages.notFound "Unknown post id"
 
-api :: Connection -> ScottyM ()
-api conn = do
-    get    "/admin/api/image/:imageId" $ pathParam "imageId" >>= liftIO . API.getImageInfo conn >>= json
+api :: App ()
+api = do
+    get    "/admin/api/image/:imageId" $ do
+        iid <- pathParam "imageId"
+        pool <- askPool
+        liftIO (withResource pool (`API.getImageInfo` iid)) >>= json
     put    "/admin/api/image/:imageId" $ do
         i <- pathParam "imageId"
         c <- formParam "caption"
-        liftIO $ API.updateImageInfo conn i c
-    delete "/admin/api/image/:imageId" $ pathParam "imageId" >>= liftIO . API.deleteImageInfo conn
-    post   "/admin/api/post" $ liftIO (API.newPost conn) >>= json
-    get    "/admin/api/post/:postId" $ pathParam "postId" >>= liftIO . API.getPostInfo conn >>= json
+        pool <- askPool
+        liftIO $ withResource pool (\conn -> API.updateImageInfo conn i c)
+    delete "/admin/api/image/:imageId" $ do
+        iid <- pathParam "imageId"
+        pool <- askPool
+        liftIO (withResource pool (`API.deleteImageInfo` iid))
+    post   "/admin/api/post" $ do
+        pool <- askPool
+        liftIO (withResource pool API.newPost) >>= json
+    get    "/admin/api/post/:postId" $ do
+        pid <- pathParam "postId"
+        pool <- askPool
+        liftIO (withResource pool $ \conn -> API.getPostInfo conn pid) >>= json
     put    "/admin/api/post/:postId" $ do
         i <- pathParam "postId"
         cap <- formParam "caption"
         cont <- formParam "contents"
-        liftIO $ API.updatePostInfo conn i cap cont
-    delete "/admin/api/post/:postId" $ pathParam "postId" >>= liftIO . API.deletePostInfo conn
+        pool <- askPool
+        liftIO $ withResource pool (\conn -> API.updatePostInfo conn i cap cont)
+    delete "/admin/api/post/:postId" $ do
+        pid <- pathParam "postId"
+        pool <- askPool
+        liftIO (withResource pool $ \conn -> API.deletePostInfo conn pid)
     post   "/admin/api/post/:postId/image" $ do
         i <- pathParam "postId"
         fs <- files
-        r <- liftIO $ API.uploadImage conn i fs
+        pool <- askPool
+        r <- liftIO $ withResource pool (\conn -> API.uploadImage conn i fs)
         json r

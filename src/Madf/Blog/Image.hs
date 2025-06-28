@@ -165,6 +165,7 @@ createPreview jq dh pfp md img = do
 
 loadImage :: Connection -> Config -> PostId -> File BS.ByteString -> IO Image
 loadImage conn conf pid (_, fi) = do
+    checkCreateDir stp
     (md, img) <- prepareImage sfn fi
     (pw, ph) <- createPreview jq dph spn md img
     fs <- getSize sfn
@@ -176,7 +177,7 @@ loadImage conn conf pid (_, fi) = do
         Right i -> return i
     where
         fn = decodeUtf8 $ fileName fi
-        pn = "preview-" <> fn
+        pn = previewPrefix (images conf) <> fn
         std = storageDir $ images conf
         stp = std <> toText pid
         sfn = stp <> "/" <> fn

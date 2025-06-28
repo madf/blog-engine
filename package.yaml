@@ -22,7 +22,7 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - aeson
-- scotty
+- scotty >= 0.22
 - lucid
 - wai
 - wai-middleware-static
@@ -37,6 +37,10 @@ dependencies:
 - JuicyPixels
 - JuicyPixels-extra
 - directory
+- resource-pool
+- mtl
+- unliftio-core
+- password
 
 ghc-options:
 - -Wall

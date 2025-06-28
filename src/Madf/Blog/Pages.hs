@@ -100,7 +100,7 @@ previewPost :: Post.Post -> Html ()
 previewPost p = template $ do
     h2_ $ toHtml (Post.postTitle p)
     div_ $ do
-        small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p) <> ". Updated: " <> (fromMaybe "never" $ timeToText <$> Post.postUpdated p))
+        small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p) <> ". Updated: " <> maybe "never" timeToText (Post.postUpdated p))
     hr_ []
     mapM_ renderBlock (Post.postContent p)
 
