@@ -9,6 +9,7 @@ import Data.Maybe
 import Data.Pool
 import qualified Data.Aeson as DA
 import Database.SQLite.Simple
+import Control.Monad
 import Control.Monad.Reader
 import Web.Scotty.Trans as WS
 import qualified Network.HTTP.Types as NT
@@ -61,10 +62,10 @@ pages = do
     get    "/admin/new" $ lucid Pages.newPost
     post   "/admin/new" $ do
         t <- formParam "title"
-        c <- formParam "contents"
+        c <- formParam "content"
         case DA.eitherDecode c of
             Right bs -> do
-                withConn $ \conn -> Post.create conn t bs
+                withConn $ \conn -> void $ Post.create conn t bs
                 redirect "/admin"
             Left m -> do
                 status NT.badRequest400
@@ -80,7 +81,7 @@ pages = do
     put    "/admin/edit/:postId" $ do
         i <- pathParam "postId"
         t <- formParam "title"
-        c <- formParam "contents"
+        c <- formParam "content"
         d <- formParam "draft"
         case DA.eitherDecode c of
             Right bs -> do
@@ -126,7 +127,7 @@ postAPI :: App ()
 postAPI = do
     post   "/admin/api/post" $ do
         t <- formParam "title"
-        c <- formParam "contents"
+        c <- formParam "content"
         case DA.eitherDecode c of
             Right bs -> do
                 r <- withConn $ \conn -> Post.create conn t bs
@@ -139,7 +140,7 @@ postAPI = do
     put    "/admin/api/post/:postId" $ do
         i <- pathParam "postId"
         t <- formParam "title"
-        c <- formParam "contents"
+        c <- formParam "content"
         d <- formParam "draft"
         case DA.eitherDecode c of
             Right bs -> withConn $ \conn -> Post.update conn i t bs d

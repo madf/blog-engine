@@ -9,8 +9,11 @@ module Madf.Blog.Image
     , delete
     , listByPost
     , deleteByPost
-    , imageUrl
-    , imagePreviewUrl
+    , imageCaption
+    , imageURL
+    , imagePreviewWidth
+    , imagePreviewHeight
+    , imagePreviewURL
     , upload
     ) where
 
@@ -33,82 +36,123 @@ import Madf.Blog.Ids
 import Madf.Blog.Config
 import Madf.Blog.Files
 
-data Image = Image
-    { imageId              :: !ImageId
-    , imagePostId          :: !PostId
-    , imageCaption         :: !Text
-    , imageFileName        :: !Text
-    , imageFileSize        :: !Int64
-    , imageWidth           :: !Int
-    , imageHeight          :: !Int
-    , imageMIMEType        :: !Text
-    , imagePreviewFileName :: !Text
-    , imagePreviewFileSize :: !Int64
-    , imagePreviewWidth    :: !Int
-    , imagePreviewHeight   :: !Int
-    , imageCreated         :: !UTCTime
-    , imageUpdated         :: !(Maybe UTCTime)
-    } deriving (Show, Generic, FromRow)
+data ImageInfo = ImageInfo
+    { imageInfoPostId          :: !PostId
+    , imageInfoCaption         :: !Text
+    , imageInfoFileName        :: !Text
+    , imageInfoFileSize        :: !Int64
+    , imageInfoWidth           :: !Int
+    , imageInfoHeight          :: !Int
+    , imageInfoMIMEType        :: !Text
+    , imageInfoURL             :: !Text
+    , imageInfoPreviewFileName :: !Text
+    , imageInfoPreviewFileSize :: !Int64
+    , imageInfoPreviewWidth    :: !Int
+    , imageInfoPreviewHeight   :: !Int
+    , imageInfoPreviewURL      :: !Text
+    , imageInfoCreated         :: !UTCTime
+    , imageInfoUpdated         :: !(Maybe UTCTime)
+    } deriving (Show, Generic, FromRow, ToRow)
 
-instance ToJSON Image
+instance FromJSON ImageInfo
     where
-        toJSON v = object
-            [ "id"                .= imageId v
-            , "post_id"           .= imagePostId v
-            , "caption"           .= imageCaption v
-            , "file_name"         .= imageFileName v
-            , "file_size"         .= imageFileSize v
-            , "width"             .= imageWidth v
-            , "height"            .= imageHeight v
-            , "mime_type"         .= imageMIMEType v
-            , "preview_file_name" .= imagePreviewFileName v
-            , "preview_file_size" .= imagePreviewFileSize v
-            , "preview_width"     .= imagePreviewWidth v
-            , "preview_height"    .= imagePreviewHeight v
-            , "created"           .= imageCreated v
-            , "updated"           .= imageUpdated v
-            ]
-        toEncoding v = pairs
-            (  "id"                .= imageId v
-            <> "post_id"           .= imagePostId v
-            <> "caption"           .= imageCaption v
-            <> "file_name"         .= imageFileName v
-            <> "file_size"         .= imageFileSize v
-            <> "width"             .= imageWidth v
-            <> "height"            .= imageHeight v
-            <> "mime_type"         .= imageMIMEType v
-            <> "preview_file_name" .= imagePreviewFileName v
-            <> "preview_file_size" .= imagePreviewFileSize v
-            <> "preview_width"     .= imagePreviewWidth v
-            <> "preview_height"    .= imagePreviewHeight v
-            <> "created"           .= imageCreated v
-            <> "updated"           .= imageUpdated v
-            )
-
-instance FromJSON Image
-    where
-        parseJSON = withObject "Madf.Blog.Image" $ \o -> Image
-            <$> o .: "id"
-            <*> o .: "post_id"
+        parseJSON = withObject "Madf.Blog.ImageInfo" $ \o -> ImageInfo
+            <$> o .: "post_id"
             <*> o .: "caption"
             <*> o .: "file_name"
             <*> o .: "file_size"
             <*> o .: "width"
             <*> o .: "height"
             <*> o .: "mime_type"
+            <*> o .: "url"
             <*> o .: "preview_file_name"
             <*> o .: "preview_file_size"
             <*> o .: "preview_width"
             <*> o .: "preview_height"
+            <*> o .: "preview_url"
             <*> o .: "created"
             <*> o .: "updated"
 
-data Info = Info !PostId !Text !Int64 !Int !Int !Text !Text !Int64 !Int !Int !UTCTime deriving (Show, Generic, ToRow)
+data Image = Image
+    { imageId   :: !ImageId
+    , imageInfo :: !ImageInfo
+    } deriving (Show)
+
+imagePostId :: Image -> PostId
+imagePostId = imageInfoPostId . imageInfo
+
+imageCaption :: Image -> Text
+imageCaption = imageInfoCaption . imageInfo
+
+imageURL :: Image -> Text
+imageURL = imageInfoURL . imageInfo
+
+imageFileName :: Image -> Text
+imageFileName = imageInfoFileName . imageInfo
+
+imagePreviewFileName :: Image -> Text
+imagePreviewFileName = imageInfoPreviewFileName . imageInfo
+
+imagePreviewWidth :: Image -> Int
+imagePreviewWidth = imageInfoPreviewWidth . imageInfo
+
+imagePreviewHeight :: Image -> Int
+imagePreviewHeight = imageInfoPreviewHeight . imageInfo
+
+imagePreviewURL :: Image -> Text
+imagePreviewURL = imageInfoPreviewURL . imageInfo
+
+instance ToJSON Image
+    where
+        toJSON v = object
+            [ "id"                .= imageId v
+            , "post_id"           .= (imageInfoPostId . imageInfo) v
+            , "caption"           .= (imageInfoCaption . imageInfo) v
+            , "file_name"         .= (imageInfoFileName . imageInfo) v
+            , "file_size"         .= (imageInfoFileSize . imageInfo) v
+            , "width"             .= (imageInfoWidth . imageInfo) v
+            , "height"            .= (imageInfoHeight . imageInfo) v
+            , "mime_type"         .= (imageInfoMIMEType . imageInfo) v
+            , "url"               .= (imageInfoURL . imageInfo) v
+            , "preview_file_name" .= (imageInfoPreviewFileName . imageInfo) v
+            , "preview_file_size" .= (imageInfoPreviewFileSize . imageInfo) v
+            , "preview_width"     .= (imageInfoPreviewWidth . imageInfo) v
+            , "preview_height"    .= (imageInfoPreviewHeight . imageInfo) v
+            , "preview_url"       .= (imageInfoPreviewURL . imageInfo) v
+            , "created"           .= (imageInfoCreated . imageInfo) v
+            , "updated"           .= (imageInfoUpdated . imageInfo) v
+            ]
+        toEncoding v = pairs
+            (  "id"                .= imageId v
+            <> "post_id"           .= (imageInfoPostId . imageInfo) v
+            <> "caption"           .= (imageInfoCaption . imageInfo) v
+            <> "file_name"         .= (imageInfoFileName . imageInfo) v
+            <> "file_size"         .= (imageInfoFileSize . imageInfo) v
+            <> "width"             .= (imageInfoWidth . imageInfo) v
+            <> "height"            .= (imageInfoHeight . imageInfo) v
+            <> "mime_type"         .= (imageInfoMIMEType . imageInfo) v
+            <> "url"               .= (imageInfoURL . imageInfo) v
+            <> "preview_file_name" .= (imageInfoPreviewFileName . imageInfo) v
+            <> "preview_file_size" .= (imageInfoPreviewFileSize . imageInfo) v
+            <> "preview_width"     .= (imageInfoPreviewWidth . imageInfo) v
+            <> "preview_height"    .= (imageInfoPreviewHeight . imageInfo) v
+            <> "preview_url"       .= (imageInfoPreviewURL . imageInfo) v
+            <> "created"           .= (imageInfoCreated . imageInfo) v
+            <> "updated"           .= (imageInfoUpdated . imageInfo) v
+            )
+
+instance FromRow Image
+    where
+        fromRow = Image <$> field <*> fromRow
+
+instance FromJSON Image
+    where
+        parseJSON j = (withObject "Madf.Blog.Image" $ \o -> Image
+            <$> o .: "id"
+            <*> parseJSON j)
+            j
 
 data UFInfo = UFInfo !Text !Int64 !Int !Int !Text !Text !Int64 !Int !Int !UTCTime !ImageId deriving (Show, Generic, ToRow)
-
-fromInfo :: ImageId -> Info -> Image
-fromInfo iid (Info pid fn fs w h mime pfn pfs pw ph c) = Image iid pid "" fn fs w h mime pfn pfs pw ph c Nothing
 
 get :: Connection -> ImageId -> IO (Maybe Image)
 get conn iid = listToMaybe <$> query conn "SELECT id, post_id, caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated FROM images WHERE id = ?" (Only iid)
@@ -133,7 +177,7 @@ updateFile conn conf iid (_, fi) = do
             fs <- getSize (sfn pid)
             ps <- getSize (spn pid)
             now <- getCurrentTime
-            void $ execute conn "UPDATE images SET file_name = ?, file_size = ?, width = ?, height = ?, mime_type = ?, preview_file_name = ?, preview_file_size = ?, preview_width = ?, preview_height = ?, updated = ? WHERE id = ?" (UFInfo fn fs (width img) (height img) mime pn ps pw ph now iid)
+            execute conn "UPDATE images SET file_name = ?, file_size = ?, width = ?, height = ?, mime_type = ?, preview_file_name = ?, preview_file_size = ?, preview_width = ?, preview_height = ?, updated = ? WHERE id = ?" (UFInfo fn fs (width img) (height img) mime pn ps pw ph now iid)
             get' conn iid
     where
         fn = decodeUtf8 $ fileName fi
@@ -150,7 +194,7 @@ updateFile conn conf iid (_, fi) = do
 
 updateCaption :: Connection -> ImageId -> Text -> IO Image
 updateCaption conn iid cap = do
-    void $ execute conn "UPDATE images SET caption = ? WHERE id = ?" (cap, iid)
+    execute conn "UPDATE images SET caption = ? WHERE id = ?" (cap, iid)
     get' conn iid
 
 getFiles :: Connection -> ImageId -> IO (Maybe (Text, Text))
@@ -163,7 +207,7 @@ delete conn iid = do
         Nothing -> return ()
         Just (sfn, spn) -> do
             removeFiles sfn spn
-            void $ execute conn "DELETE FROM images WHERE id = ?" (Only iid)
+            execute conn "DELETE FROM images WHERE id = ?" (Only iid)
 
 listByPost :: Connection -> PostId -> IO [Image]
 listByPost conn pid = query conn "SELECT id, post_id caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated FROM images WHERE post_id = ?" (Only pid)
@@ -172,16 +216,7 @@ deleteByPost :: Connection -> PostId -> IO ()
 deleteByPost conn pid = do
     fs <- query conn "SELECT file_name, preview_file_name FROM images WHERE post_id = ?" (Only pid)
     mapM_ (uncurry removeFiles) fs
-    void $ execute conn "DELETE FROM images WHERE post_id = ?" (Only pid)
-
-imageUrlPrefix :: Image -> Text
-imageUrlPrefix i = "/blogimages/" <> (Data.Text.pack . show) (imagePostId i)
-
-imageUrl :: Image -> Text
-imageUrl i = imageUrlPrefix i <> "/" <> imageFileName i
-
-imagePreviewUrl :: Image -> Text
-imagePreviewUrl i = imageUrlPrefix i <> "/" <> imagePreviewFileName i
+    execute conn "DELETE FROM images WHERE post_id = ?" (Only pid)
 
 scaleToHeight :: Int -> CP.Image CP.PixelRGBA8 -> CP.Image CP.PixelRGBA8
 scaleToHeight dh img = CPE.scaleBilinear (w * dh `div` h) dh img
@@ -210,7 +245,7 @@ upload conn conf pid (_, fi) = do
     fs <- getSize sfn
     ps <- getSize spn
     now <- getCurrentTime
-    ri <- createImage conn (Info pid fn fs (width img) (height img) mime pn ps pw ph now)
+    ri <- createImage conn (ImageInfo pid "" fn fs (width img) (height img) mime u pn ps pw ph pu now Nothing)
     case ri of
         Left e -> cleanup e
         Right i -> return i
@@ -219,9 +254,12 @@ upload conn conf pid (_, fi) = do
         fn = decodeUtf8 $ fileName fi
         pn = previewPrefix (images conf) <> fn
         std = storageDir $ images conf
-        stp = std <> toText pid
+        stp = std <> "/" <> toText pid
         sfn = stp <> "/" <> fn
         spn = stp <> "/" <> pn
+        uBase = urlBase (images conf) <> "/" <> toText pid
+        u = uBase <> "/" <> fn
+        pu = uBase <> "/" <> pn
         width = CP.dynamicMap CP.imageWidth
         height = CP.dynamicMap CP.imageHeight
         dph = previewHeight $ images conf
@@ -231,12 +269,12 @@ upload conn conf pid (_, fi) = do
             removeFiles sfn spn
             error (unpack m)
 
-createImage :: Connection -> Info -> IO (Either Text Image)
+createImage :: Connection -> ImageInfo -> IO (Either Text Image)
 createImage conn info = do
-    miid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO images (post_id, caption, file_name, file_size, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated) VALUES (?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL) RETURNING id" info :: IO (Maybe ImageId)
+    miid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO images (post_id, caption, file_name, file_size, width, height, mime_type, url, preview_file_name, preview_file_size, preview_width, preview_height, preview_url, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id" info :: IO (Maybe ImageId)
     case miid of
         Nothing -> return $ Left "Cannot insert image into the DB"
-        Just iid -> return $ Right (fromInfo iid info)
+        Just iid -> return $ Right (Image iid info)
 
 prepareImage :: Text -> FileInfo BS.ByteString -> IO (CP.Metadatas, CP.DynamicImage)
 prepareImage fn fi = do

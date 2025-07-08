@@ -1,6 +1,35 @@
 let blocks = [];
 let blockIdCounter = 0;
-let contentElement = document.getElementById('content');
+const contentElement = document.getElementById('content');
+let post = undefined;
+
+const restoreOrCreatePost = async () => {
+  const post = window.sessionStorage.getItem('post');
+  if (post) {
+    return JSON.parse(post);
+  }
+
+  try
+  {
+    const formData = new FormData();
+    formData.append('title', '');
+    formData.append('content', '[]');
+    resp = await fetch('/admin/api/post', {
+      method: 'POST',
+      body: formData
+    });
+    if (!resp.ok) {
+      throw new Error(`Failed to create a new post: ${resp.statusText}`);
+    }
+    const post = await resp.json();
+    window.sessionStorage.setItem('post', JSON.stringify(post));
+    return post;
+  }
+  catch (error)
+  {
+    console.log(error);
+  }
+};
 
 function addTextBlock(text) {
   const block = {
@@ -48,6 +77,7 @@ function updateTextContent(blockId, content) {
     }
 }
 
+/*
 const handleImageUpload = (blockId, files) => {
   const block = blocks.find(b => b.id === blockId);
   if (!block || block.type !== 'carousel') return;
@@ -68,6 +98,63 @@ const handleImageUpload = (blockId, files) => {
       reader.readAsDataURL(file);
     }
   });
+}
+*/
+
+const handleImageUpload = async (blockId, files) => {
+  const block = blocks.find(b => b.id === blockId);
+  if (!block || block.type !== 'carousel') return;
+
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) {
+      continue;
+    }
+
+    // Show loading state
+    const tempId = Date.now() + Math.random();
+    block.images.push({
+      id: tempId,
+      url: '/placeholder-loading.png', // Loading placeholder
+      caption: '',
+      filename: file.name,
+      uploading: true
+    });
+    renderBlocks();
+
+    try {
+      // Upload immediately
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`/admin/api/post/${post.id}/image`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include' // Include session cookie
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      if (result.length !== 1) {
+        throw new Error('Image upload returned multiple results');
+      }
+
+      // Replace temp image with uploaded result
+      const imageIndex = block.images.findIndex(img => img.id === tempId);
+      if (imageIndex !== -1) {
+        block.images[imageIndex] = result[0];
+        renderBlocks();
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      // Remove failed upload from UI
+      block.images = block.images.filter(img => img.id !== tempId);
+      alert(`Failed to upload ${file.name}: ${error.message}`);
+      renderBlocks();
+    }
+  }
 }
 
 function updateImageCaption(blockId, imageId, caption) {
@@ -150,7 +237,7 @@ const createImageControls = (block, img) => {
   const ic = document.createElement('div');
   ic.className = 'image-controls';
   const fn = document.createElement('small');
-  fn.innerHTML = img.filename;
+  fn.innerHTML = img.file_name;
   ic.appendChild(fn);
   ic.appendChild(createButton('btn btn-small btn-danger', () => { deleteImage(block.id, img.id); }, 'x'));
   return ic;
@@ -187,7 +274,7 @@ const createImageUpload = block => {
 const createImageItem = (block, img) => {
   const ii = document.createElement('div');
   ii.className = 'image-item';
-  ii.innerHTML = `<img src="${img.url}" alt="${img.caption}" class="image-preview">`;
+  ii.innerHTML = `<img src="${img.preview_url}" alt="${img.caption}" class="image-preview">`;
   ii.appendChild(createImageCaption(block, img));
   ii.appendChild(createImageControls(block, img));
   return ii;
@@ -361,10 +448,14 @@ const savePost = () => {
   form.submit();
 };
 
-// Initialize with some sample data
-addTextBlock('This is a sample text block. You can edit this content and add more blocks below.');
-addCarouselBlock();
-renderBlocks();
+const onLoad = async () => {
+  post = await restoreOrCreatePost();
+
+  // Initialize with some sample data
+  addTextBlock('This is a sample text block. You can edit this content and add more blocks below.');
+  addCarouselBlock();
+  renderBlocks();
+};
 
 const atbb = document.getElementById('add-text-block-button');
 atbb.addEventListener('click', e => { addTextBlock(''); renderBlocks(); });
@@ -372,3 +463,4 @@ const acbb = document.getElementById('add-carousel-block-button');
 acbb.addEventListener('click', e => { addCarouselBlock(); renderBlocks(); });
 const sb = document.getElementById('save-button');
 sb.addEventListener('click', e => { savePost(); });
+window.addEventListener('load', e => { onLoad(); });

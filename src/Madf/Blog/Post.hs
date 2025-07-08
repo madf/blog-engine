@@ -8,7 +8,6 @@ module Madf.Blog.Post
     , list
     ) where
 
-import Control.Monad
 import Data.Text
 import Data.Text.Encoding
 import qualified Data.ByteString.Lazy as LBS
@@ -91,10 +90,17 @@ instance FromJSON Post
             <*> o .: "content"
             <*> o .: "is_draft"
 
-create :: Connection -> Text -> [Block] -> IO ()
+create :: Connection -> Text -> [Block] -> IO Post
 create conn t bs = do
     now <- getCurrentTime
-    void $ execute conn "INSERT INTO posts (title, content, is_draft, created, updated) VALUES (?, ?, ?, ?, ?)" (t, content, True, now, now)
+    mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (title, content, is_draft, created, updated) VALUES (?, ?, ?, ?, ?) RETURNING id" (t, content, True, now, now)
+    case mpid of
+        Nothing -> error "Cannot create post"
+        Just pid -> do
+            mp <- get conn pid
+            case mp of
+                Nothing -> error "Cannot create post"
+                Just p -> return p
     where
         content = encode bs
 
@@ -104,12 +110,12 @@ get conn pid = fmap makePost . listToMaybe <$> query conn "SELECT id, created, u
 update :: Connection -> PostId -> Text -> [Block] -> Bool -> IO ()
 update conn pid t bs isd = do
     now <- getCurrentTime
-    void $ execute conn "UPDATE posts SET title = ?, content = ?, is_draft = ? WHERE id = ?" (t, content, isd, pid)
+    execute conn "UPDATE posts SET title = ?, content = ?, is_draft = ? WHERE id = ?" (t, content, isd, pid)
     where
         content = encode bs
 
 delete :: Connection -> PostId -> IO ()
-delete conn pid = void $ execute conn "DELETE FROM posts WHERE id = ?" (Only pid)
+delete conn pid = execute conn "DELETE FROM posts WHERE id = ?" (Only pid)
 
 list :: Connection -> Int -> Int -> IO [Post]
 list conn page perPage = fmap makePost <$> query conn "SELECT id, created, updated, title, content, is_draft FROM posts LIMIT ? OFFSET ?" (perPage, page * perPage)

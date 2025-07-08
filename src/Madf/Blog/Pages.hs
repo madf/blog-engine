@@ -53,7 +53,7 @@ exerpt' (Just image) (Just t) = do
     p_ $ toHtml t
 
 previewImage :: Image.Image -> Html ()
-previewImage i = img_ [src_ (Image.imagePreviewUrl i), width_ (pack . show $ Image.imagePreviewWidth i), height_ (pack . show $ Image.imagePreviewHeight i), alt_ (Image.imageCaption i)]
+previewImage i = img_ [src_ (Image.imagePreviewURL i), width_ (pack . show $ Image.imagePreviewWidth i), height_ (pack . show $ Image.imagePreviewHeight i), alt_ (Image.imageCaption i)]
 
 firstImage :: [Post.Block] -> Maybe Image.Image
 firstImage = listToMaybe . mapMaybe extractFirstImage
@@ -116,8 +116,8 @@ renderCarousel is = do
 
 renderImage :: Image.Image -> Html ()
 renderImage i = div_ $ do
-    with a_ [href_ (Image.imageUrl i)] $ do
-        img_ [src_ (Image.imagePreviewUrl i), alt_ (Image.imageCaption i), class_ "image-preview"]
+    with a_ [href_ (Image.imageURL i)] $ do
+        img_ [src_ (Image.imagePreviewURL i), alt_ (Image.imageCaption i), class_ "image-preview"]
     p_ $ toHtml (Image.imageCaption i)
 
 notFound :: Text -> Html ()

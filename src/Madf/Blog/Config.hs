@@ -29,6 +29,7 @@ data ImagesConfig = ImagesConfig
     , previewHeight :: !Int
     , jpegQuality   :: !Int
     , previewPrefix :: !Text
+    , urlBase       :: !Text
     } deriving (Show)
 
 data AdminConfig = AdminConfig
@@ -47,7 +48,7 @@ defaultPasswordHash = PasswordHash "$argon2id$v=19$m=65536,t=2,p=1$OjYULa8hWb3zt
 defaultConfig :: Config
 defaultConfig = Config
     (DBConfig "test.db")
-    (ImagesConfig "images" 300 100 "preview-")
+    (ImagesConfig "static/images" 300 100 "preview-" "/images")
     (AdminConfig "admin" defaultPasswordHash)
 
 parser :: IniParser Config
@@ -60,7 +61,8 @@ parser = do
         ph <- fieldOf "preview_height" number
         jq <- fieldOf "jpeg_quality" number
         pp <- pack <$> fieldOf "preview_prefix" string
-        return $ ImagesConfig sd ph jq pp
+        ub <- pack <$> fieldOf "url_base" string
+        return $ ImagesConfig sd ph jq pp ub
     ac <- section "admin" $ do
         l <- pack <$> fieldOf "login" string
         ph <- PasswordHash . pack <$> fieldOf "password_hash" string

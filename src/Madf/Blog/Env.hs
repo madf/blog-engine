@@ -27,9 +27,15 @@ newtype EnvM a = EnvM
 runIO :: Env -> EnvM a -> IO a
 runIO env m = runReaderT (runEnvM m) env
 
+openWithFK :: C.Config -> IO Connection
+openWithFK conf = do
+    conn <- open (unpack . C.path . C.db $ conf)
+    execute_ conn "PRAGMA foreign_keys = ON"
+    return conn
+
 createPool :: C.Config -> IO (Pool Connection)
 createPool conf = do
-    let pcfg = defaultPoolConfig (open (unpack . C.path $ C.db conf)) close 3600 10
+    let pcfg = defaultPoolConfig (openWithFK conf) close 3600 10
     newPool $ setNumStripes (Just 2) pcfg
 
 create :: Text -> IO Env
