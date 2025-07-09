@@ -1,4 +1,3 @@
-let blocks = [];
 let blockIdCounter = 0;
 const contentElement = document.getElementById('content');
 let post = undefined;
@@ -9,8 +8,7 @@ const restoreOrCreatePost = async () => {
     return JSON.parse(post);
   }
 
-  try
-  {
+  try {
     const formData = new FormData();
     formData.append('title', '');
     formData.append('content', '[]');
@@ -24,57 +22,56 @@ const restoreOrCreatePost = async () => {
     const post = await resp.json();
     window.sessionStorage.setItem('post', JSON.stringify(post));
     return post;
-  }
-  catch (error)
-  {
+  } catch (error) {
     console.log(error);
   }
 };
 
-function addTextBlock(text) {
+const addTextBlock = () => {
   const block = {
     id: ++blockIdCounter,
     type: 'text',
-    content: text
+    content: ''
   };
-  blocks.push(block);
+  post.content.push(block);
 }
 
-function addCarouselBlock() {
-    const block = {
-        id: ++blockIdCounter,
-        type: 'carousel',
-        images: []
-    };
-    blocks.push(block);
+const addCarouselBlock = () => {
+  const block = {
+    id: ++blockIdCounter,
+    type: 'carousel',
+    content: []
+  };
+  post.content.push(block);
 }
 
-function deleteBlock(blockId) {
-    blocks = blocks.filter(block => block.id !== blockId);
+const deleteBlock = blockId => {
+  post.content = post.content.filter(block => block.id !== blockId);
+  renderBlocks();
+}
+
+const moveBlockUp = blockId => {
+  const index = post.content.findIndex(block => block.id === blockId);
+  if (index > 0) {
+    [post.content[index], post.content[index - 1]] = [post.content[index - 1], post.content[index]];
     renderBlocks();
+  }
 }
 
-function moveBlockUp(blockId) {
-    const index = blocks.findIndex(block => block.id === blockId);
-    if (index > 0) {
-        [blocks[index], blocks[index - 1]] = [blocks[index - 1], blocks[index]];
-        renderBlocks();
-    }
+const moveBlockDown = blockId => {
+  const index = post.content.findIndex(block => block.id === blockId);
+  if (index < post.content.length - 1) {
+    [post.content[index], post.content[index + 1]] = [post.content[index + 1], post.content[index]];
+    renderBlocks();
+  }
 }
 
-function moveBlockDown(blockId) {
-    const index = blocks.findIndex(block => block.id === blockId);
-    if (index < blocks.length - 1) {
-        [blocks[index], blocks[index + 1]] = [blocks[index + 1], blocks[index]];
-        renderBlocks();
-    }
-}
-
-function updateTextContent(blockId, content) {
-    const block = blocks.find(b => b.id === blockId);
-    if (block) {
-        block.content = content;
-    }
+const updateTextContent = (blockId, content) => {
+  console.log(`New text for block ${blockId}: ${content}`);
+  const block = post.content.find(b => b.id === blockId);
+  if (block) {
+    block.content = content;
+  }
 }
 
 /*
@@ -102,8 +99,9 @@ const handleImageUpload = (blockId, files) => {
 */
 
 const handleImageUpload = async (blockId, files) => {
-  const block = blocks.find(b => b.id === blockId);
+  const block = post.content.find(b => b.id === blockId);
   if (!block || block.type !== 'carousel') return;
+  let needSave = false;
 
   for (const file of files) {
     if (!file.type.startsWith('image/')) {
@@ -112,7 +110,7 @@ const handleImageUpload = async (blockId, files) => {
 
     // Show loading state
     const tempId = Date.now() + Math.random();
-    block.images.push({
+    block.content.push({
       id: tempId,
       preview_url: '/images/loading-placeholder.svg', // Loading placeholder
       caption: '',
@@ -142,25 +140,30 @@ const handleImageUpload = async (blockId, files) => {
       }
 
       // Replace temp image with uploaded result
-      const imageIndex = block.images.findIndex(img => img.id === tempId);
+      const imageIndex = block.content.findIndex(img => img.id === tempId);
       if (imageIndex !== -1) {
-        block.images[imageIndex] = result[0];
+        block.content[imageIndex] = result[0];
         renderBlocks();
+        needSave = true;
       }
     } catch (error) {
       console.error('Upload failed:', error);
       // Remove failed upload from UI
-      block.images = block.images.filter(img => img.id !== tempId);
+      block.content = block.content.filter(img => img.id !== tempId);
       alert(`Failed to upload ${file.name}: ${error.message}`);
       renderBlocks();
     }
   }
+
+  if (needSave) {
+    savePost();
+  }
 }
 
 function updateImageCaption(blockId, imageId, caption) {
-    const block = blocks.find(b => b.id === blockId);
+    const block = post.content.find(b => b.id === blockId);
     if (block) {
-        const image = block.images.find(img => img.id === imageId);
+        const image = block.content.find(img => img.id === imageId);
         if (image) {
             image.caption = caption;
         }
@@ -168,30 +171,41 @@ function updateImageCaption(blockId, imageId, caption) {
 }
 
 const deleteImage = (blockId, imageId) => {
-  const block = blocks.find(b => b.id === blockId);
+  const block = post.content.find(b => b.id === blockId);
   if (block) {
-    block.images = block.images.filter(img => img.id !== imageId);
+    try {
+      resp = await fetch(`/admin/api/image/${imageId}`, {
+        method: 'DELETE',
+      });
+      if (!resp.ok) {
+        throw new Error(`Failed to delete image: ${resp.statusText}`);
+      }
+      block.content = block.content.filter(img => img.id !== imageId);
+    } catch (error) {
+      console.log(error);
+    }
+    savePost();
     renderBlocks();
   }
 };
 
 const moveImageLeft = (blockId, imageId) => {
-  const block = blocks.find(b => b.id === blockId);
+  const block = post.content.find(b => b.id === blockId);
   if (block) {
-    const idx = block.images.findIndex(img => img.id == imageId);
+    const idx = block.content.findIndex(img => img.id == imageId);
     if (idx > 0) {
-      [block.images[idx - 1], block.images[idx]] = [block.images[idx], block.images[idx - 1]];
+      [block.content[idx - 1], block.content[idx]] = [block.content[idx], block.content[idx - 1]];
       renderBlocks();
     }
   }
 };
 
 const moveImageRight = (blockId, imageId) => {
-  const block = blocks.find(b => b.id === blockId);
+  const block = post.content.find(b => b.id === blockId);
   if (block) {
-    const idx = block.images.findIndex(img => img.id == imageId);
-    if (idx < block.images.length - 1) {
-      [block.images[idx], block.images[idx + 1]] = [block.images[idx + 1], block.images[idx]];
+    const idx = block.content.findIndex(img => img.id == imageId);
+    if (idx < block.content.length - 1) {
+      [block.content[idx], block.content[idx + 1]] = [block.content[idx + 1], block.content[idx]];
       renderBlocks();
     }
   }
@@ -212,7 +226,7 @@ const createBlockHeader = (block, index, title) => {
   const upBtn = createButton('btn btn-small btn-secondary', () => { moveBlockUp(block.id); }, '↑');
   upBtn.disabled = index === 0;
   const downBtn = createButton('btn btn-small btn-secondary', () => { moveBlockDown(block.id); }, '↓');
-  downBtn.disabled = index === blocks.length - 1;
+  downBtn.disabled = index === post.content.length - 1;
   const deleteBtn = createButton('btn btn-small btn-danger', () => { deleteBlock(block.id); }, 'Delete');
   ctrl.appendChild(upBtn);
   ctrl.appendChild(downBtn);
@@ -310,12 +324,12 @@ const createCarouselContent = block => {
   const cb = document.createElement('div');
   cb.className = 'carousel-block';
   cb.appendChild(createImageUpload(block));
-  console.log(`Carousel images: ${block.images.length}`);
-  if (block.images.length > 0)
+  console.log(`Carousel images: ${block.content.length}`);
+  if (block.content.length > 0)
   {
     const ig = document.createElement('div');
     ig.className = 'images-grid';
-    block.images.map(img => {
+    block.content.map(img => {
       ig.appendChild(createImageItem(block, img));
     });
     cb.appendChild(ig);
@@ -345,7 +359,7 @@ const createCarouselBlock = (block, index) => {
 function renderBlocks() {
   const container = document.getElementById('blocksContainer');
 
-  if (blocks.length === 0) {
+  if (post.content.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <p>No blocks yet. Add a text block or carousel to get started.</p>
@@ -356,7 +370,7 @@ function renderBlocks() {
 
   container.textContent = '';
 
-  blocks.map((block, index) => {
+  post.content.map((block, index) => {
     if (block.type === 'text') {
       container.appendChild(createTextBlock(block, index));
     } else if (block.type === 'carousel') {
@@ -444,7 +458,7 @@ function renderBlocks() {
 function saveDraft() {
   const postData = {
     title: document.getElementById('postTitle').value,
-    blocks: blocks,
+    blocks: post.content,
     status: 'draft'
   };
 
@@ -457,7 +471,7 @@ function saveDraft() {
 function publishPost() {
   const postData = {
     title: document.getElementById('postTitle').value,
-    blocks: blocks,
+    blocks: post.content,
     status: 'published'
   };
 
@@ -467,24 +481,37 @@ function publishPost() {
   // In real app: fetch('/api/posts/publish', { method: 'POST', body: JSON.stringify(postData) })
 }
 
-const savePost = () => {
-  const contentElement = document.getElementById('content');
-  contentElement.value = JSON.stringify(blocks);
-  const form = document.getElementById('post-form');
-  form.submit();
+const savePost = async () => {
+  try {
+    // Upload immediately
+    const formData = new FormData();
+    formData.append('title', document.getElementById('title').value);
+    formData.append('content', JSON.stringify(post.content));
+    formData.append('draft', document.getElementById('is_draft').checked);
+
+    const response = await fetch(`/admin/api/post/${post.id}`, {
+      method: 'PUT',
+      body: formData,
+      credentials: 'include' // Include session cookie
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.statusText}`);
+    }
+
+    window.sessionStorage.setItem('post', JSON.stringify(post));
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 const onLoad = async () => {
   post = await restoreOrCreatePost();
-
-  // Initialize with some sample data
-  addTextBlock('This is a sample text block. You can edit this content and add more blocks below.');
-  addCarouselBlock();
   renderBlocks();
 };
 
 const atbb = document.getElementById('add-text-block-button');
-atbb.addEventListener('click', e => { addTextBlock(''); renderBlocks(); });
+atbb.addEventListener('click', e => { addTextBlock(); renderBlocks(); });
 const acbb = document.getElementById('add-carousel-block-button');
 acbb.addEventListener('click', e => { addCarouselBlock(); renderBlocks(); });
 const sb = document.getElementById('save-button');
