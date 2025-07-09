@@ -41,6 +41,8 @@ dependencies:
 - mtl
 - unliftio-core
 - password
+- xxhash-ffi
+- hashable
 
 ghc-options:
 - -Wall
