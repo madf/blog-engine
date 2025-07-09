@@ -114,9 +114,9 @@ const handleImageUpload = async (blockId, files) => {
     const tempId = Date.now() + Math.random();
     block.images.push({
       id: tempId,
-      url: '/placeholder-loading.png', // Loading placeholder
+      preview_url: '/images/loading-placeholder.svg', // Loading placeholder
       caption: '',
-      filename: file.name,
+      file_name: file.name,
       uploading: true
     });
     renderBlocks();
@@ -167,18 +167,41 @@ function updateImageCaption(blockId, imageId, caption) {
     }
 }
 
-function deleteImage(blockId, imageId) {
-    const block = blocks.find(b => b.id === blockId);
-    if (block) {
-        block.images = block.images.filter(img => img.id !== imageId);
-        renderBlocks();
+const deleteImage = (blockId, imageId) => {
+  const block = blocks.find(b => b.id === blockId);
+  if (block) {
+    block.images = block.images.filter(img => img.id !== imageId);
+    renderBlocks();
+  }
+};
+
+const moveImageLeft = (blockId, imageId) => {
+  const block = blocks.find(b => b.id === blockId);
+  if (block) {
+    const idx = block.images.findIndex(img => img.id == imageId);
+    if (idx > 0) {
+      [block.images[idx - 1], block.images[idx]] = [block.images[idx], block.images[idx - 1]];
+      renderBlocks();
     }
-}
+  }
+};
+
+const moveImageRight = (blockId, imageId) => {
+  const block = blocks.find(b => b.id === blockId);
+  if (block) {
+    const idx = block.images.findIndex(img => img.id == imageId);
+    if (idx < block.images.length - 1) {
+      [block.images[idx], block.images[idx + 1]] = [block.images[idx + 1], block.images[idx]];
+      renderBlocks();
+    }
+  }
+};
 
 const createButton = (className, handler, name) => {
   const btn = document.createElement('button');
   btn.className = className;
   btn.innerHTML = name;
+  btn.type = 'button';
   btn.addEventListener('click', handler);
   return btn;
 };
@@ -238,7 +261,10 @@ const createImageControls = (block, img) => {
   ic.className = 'image-controls';
   const fn = document.createElement('small');
   fn.innerHTML = img.file_name;
+  fn.title = img.file_name;
   ic.appendChild(fn);
+  ic.appendChild(createButton('btn btn-small btn-secondary', () => { moveImageLeft(block.id, img.id); }, '<'));
+  ic.appendChild(createButton('btn btn-small btn-secondary', () => { moveImageRight(block.id, img.id); }, '>'));
   ic.appendChild(createButton('btn btn-small btn-danger', () => { deleteImage(block.id, img.id); }, 'x'));
   return ic;
 };

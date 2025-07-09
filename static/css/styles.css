@@ -183,17 +183,20 @@ body {
     border-radius: 6px;
     overflow: hidden;
     background: white;
+    display: flex;
+    flex-direction: column;
 }
 
 .image-preview {
     width: auto;
     height: auto;
-    max-height: 150px;
+    max-width: 200px;
     object-fit: cover;
 }
 
 .image-caption {
     padding: 10px;
+    margin-top: auto;
 }
 
 .image-caption input {
@@ -208,6 +211,18 @@ body {
     padding: 10px;
     display: flex;
     justify-content: space-between;
+}
+
+.image-controls small {
+  flex-grow: 6;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.image-controls button {
+  flex-grow: 0
 }
 
 .save-section {
