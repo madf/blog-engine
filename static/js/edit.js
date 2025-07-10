@@ -170,7 +170,7 @@ function updateImageCaption(blockId, imageId, caption) {
     }
 }
 
-const deleteImage = (blockId, imageId) => {
+const deleteImage = async (blockId, imageId) => {
   const block = post.content.find(b => b.id === blockId);
   if (block) {
     try {

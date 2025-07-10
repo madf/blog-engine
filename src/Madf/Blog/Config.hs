@@ -48,7 +48,7 @@ defaultPasswordHash = PasswordHash "$argon2id$v=19$m=65536,t=2,p=1$OjYULa8hWb3zt
 defaultConfig :: Config
 defaultConfig = Config
     (DBConfig "test.db")
-    (ImagesConfig "static/images" 300 100 "preview-" "/images")
+    (ImagesConfig "data/images" 300 100 "preview-" "/data/images")
     (AdminConfig "admin" defaultPasswordHash)
 
 parser :: IniParser Config

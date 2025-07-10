@@ -5,6 +5,7 @@ module Madf.Blog
 
 import Data.Text.Lazy.Builder
 import qualified Data.Text as DT
+import qualified Data.Text.Lazy as DTL
 import Data.Maybe
 import Data.Pool
 import qualified Data.Aeson as DA
@@ -45,6 +46,7 @@ routes :: App ()
 routes = do
     middleware $ staticPolicy (noDots >-> addBase "static")
     pages
+    postData
     api
 
 lucid :: Html a -> ActionT Env.EnvM ()
@@ -102,6 +104,18 @@ pages = do
             Nothing -> do
                 status NT.notFound404
                 lucid $ Pages.notFound "Unknown post id"
+
+postData :: App ()
+postData = do
+    get "/data/images/:postId/:fileName" $ do
+        pid <- pathParam "postId"
+        fn <- pathParam "fileName"
+        mi <- withConn $ \conn -> Image.getByFileName conn pid fn
+        case mi of
+            Nothing -> status NT.notFound404
+            Just img -> do
+                setHeader "Content-Type" (DTL.fromStrict $ Image.imageMIMEType img)
+                file (DT.unpack $ "data/images/" <> toText pid <> "/" <> fn)
 
 api :: App ()
 api = do

@@ -4,13 +4,17 @@
 module Madf.Blog.Image
     ( Image (..)
     , get
-    , updateFile
     , updateCaption
     , delete
     , listByPost
     , deleteByPost
+    , getByFileName
+    , imagePostId
     , imageCaption
     , imageURL
+    , imageFileName
+    , imageMIMEType
+    , imagePreviewFileName
     , imagePreviewWidth
     , imagePreviewHeight
     , imagePreviewURL
@@ -35,6 +39,7 @@ import qualified Codec.Picture.Extra as CPE
 import Madf.Blog.Ids
 import Madf.Blog.Config
 import Madf.Blog.Files
+import Madf.Blog.Utils
 
 data ImageInfo = ImageInfo
     { imageInfoPostId          :: !PostId
@@ -62,6 +67,7 @@ instance FromJSON ImageInfo
             <*> o .: "caption"
             <*> o .: "file_name"
             <*> o .: "file_size"
+            <*> o .: "file_hash"
             <*> o .: "width"
             <*> o .: "height"
             <*> o .: "mime_type"
@@ -90,6 +96,9 @@ imageURL = imageInfoURL . imageInfo
 
 imageFileName :: Image -> Text
 imageFileName = imageInfoFileName . imageInfo
+
+imageMIMEType :: Image -> Text
+imageMIMEType = imageInfoMIMEType . imageInfo
 
 imagePreviewFileName :: Image -> Text
 imagePreviewFileName = imageInfoPreviewFileName . imageInfo
@@ -155,10 +164,11 @@ instance FromJSON Image
             <*> parseJSON j)
             j
 
-data UFInfo = UFInfo !Text !Int64 !Int !Int !Text !Text !Int64 !Int !Int !UTCTime !ImageId deriving (Show, Generic, ToRow)
+selectBase :: Query
+selectBase = "SELECT id, post_id, caption, file_name, file_size, file_hash, width, height, mime_type, url, preview_file_name, preview_file_size, preview_width, preview_height, preview_url, created, updated FROM images"
 
 get :: Connection -> ImageId -> IO (Maybe Image)
-get conn iid = listToMaybe <$> query conn "SELECT id, post_id, caption, file_name, file_size, file_hash, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated FROM images WHERE id = ?" (Only iid)
+get conn iid = listToMaybe <$> query conn (selectBase <> " WHERE id = ?") (Only iid)
 
 get' :: Connection -> ImageId -> IO Image
 get' conn iid = do
@@ -167,38 +177,8 @@ get' conn iid = do
         Just img -> return img
         Nothing -> error "Unknown image id"
 
-updateFile :: Connection -> Config -> ImageId -> File BS.ByteString -> IO Image
-updateFile conn conf iid (_, fi) = do
-    mimg <- get conn iid
-    case mimg of
-        Nothing -> error "Unknown image id"
-        Just oimg -> do
-            let pid = imagePostId oimg
-            (md, img) <- prepareImage (sfn pid) fi
-            fh <- fileHash (sfn pid)
-            if fh == imageFileHash oimg then return oimg
-                                        else doUpdate md img oimg fh
-    where
-        fn = decodeUtf8 $ fileName fi
-        pn = previewPrefix (images conf) <> fn
-        std = storageDir $ images conf
-        stp pid = std <> toText pid
-        sfn pid = stp pid <> "/" <> fn
-        spn pid = stp pid <> "/" <> pn
-        width = CP.dynamicMap CP.imageWidth
-        height = CP.dynamicMap CP.imageHeight
-        dph = previewHeight $ images conf
-        jq = jpegQuality $ images conf
-        mime = decodeUtf8 $ fileContentType fi
-        doUpdate md img oimg fh = do
-            removeFiles (imageFileName oimg) (imagePreviewFileName oimg)
-            let pid = imagePostId oimg
-            (pw, ph) <- createPreview jq dph (spn pid) md img
-            fs <- getSize (sfn pid)
-            ps <- getSize (spn pid)
-            now <- getCurrentTime
-            execute conn "UPDATE images SET file_name = ?, file_size = ?, file_hash = ?, width = ?, height = ?, mime_type = ?, preview_file_name = ?, preview_file_size = ?, preview_width = ?, preview_height = ?, updated = ? WHERE id = ?" (UFInfo fn fs fh (width img) (height img) mime pn ps pw ph now iid)
-            get' conn iid
+getByFileName :: Connection -> PostId -> Text -> IO (Maybe Image)
+getByFileName conn pid fn = listToMaybe <$> query conn (selectBase <> " WHERE post_id = ? AND (file_name = ? OR preview_file_name = ?)") (pid, fn, fn)
 
 updateCaption :: Connection -> ImageId -> Text -> IO Image
 updateCaption conn iid cap = do
@@ -218,7 +198,7 @@ delete conn iid = do
             execute conn "DELETE FROM images WHERE id = ?" (Only iid)
 
 listByPost :: Connection -> PostId -> IO [Image]
-listByPost conn pid = query conn "SELECT id, post_id caption, file_name, file_size, file_hash, width, height, mime_type, preview_file_name, preview_file_size, preview_width, preview_height, created, updated FROM images WHERE post_id = ?" (Only pid)
+listByPost conn pid = query conn (selectBase <> " WHERE post_id = ?") (Only pid)
 
 deleteByPost :: Connection -> PostId -> IO ()
 deleteByPost conn pid = do
@@ -248,12 +228,11 @@ upload conn conf pid (_, fi) = do
     pe <- checkPId
     unless pe (error "Unknown post id")
     checkCreateDir stp
-    (md, img) <- prepareImage sfn fi
-    fh <- fileHash sfn
-    moimg <- findByHash pid fh
+    let fh = contentHash fi
+    moimg <- findByHash conn pid fh
     case moimg of
         Just img -> return img
-        Nothing -> doUpload md img fh
+        Nothing -> doUpload fh
     where
         checkPId = Prelude.any fromOnly <$> query conn "SELECT EXISTS (SELECT 1 FROM posts WHERE id = ?)" (Only pid)
         fn = decodeUtf8 $ fileName fi
@@ -273,12 +252,13 @@ upload conn conf pid (_, fi) = do
         cleanup m = do
             removeFiles sfn spn
             error (unpack m)
-        doUpload = do
+        doUpload fh = do
+            (md, img) <- prepareImage sfn fi
             (pw, ph) <- createPreview jq dph spn md img
             fs <- getSize sfn
             ps <- getSize spn
             now <- getCurrentTime
-            ri <- createImage conn (ImageInfo pid "" fn fs (width img) (height img) mime u pn ps pw ph pu now Nothing)
+            ri <- createImage conn (ImageInfo pid "" fn fs fh (width img) (height img) mime u pn ps pw ph pu now Nothing)
             case ri of
                 Left e -> cleanup e
                 Right i -> return i
@@ -304,3 +284,6 @@ removeFiles :: Text -> Text -> IO ()
 removeFiles sfn spn = do
     removeIfExists sfn
     removeIfExists spn
+
+findByHash :: Connection -> PostId -> Int -> IO (Maybe Image)
+findByHash conn pid fh = listToMaybe <$> query conn (selectBase <> " WHERE post_id = ? AND file_hash = ?") (pid, fh)

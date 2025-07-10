@@ -14,9 +14,11 @@ check conn = do
     unless ("images" `elem` ts) (createImagesTable conn)
 
 createInfoTable :: Connection -> IO ()
-createInfoTable conn = execute_ conn q
+createInfoTable conn = do
+    execute_ conn q
+    execute_ conn "INSERT INTO info (schema_version) VALUES (1)"
     where
-        q = "CREATE TABLE info (schema-version INTEGER NOT NULL)"
+        q = "CREATE TABLE info (schema_version INTEGER NOT NULL)"
 
 createPostsTable :: Connection -> IO ()
 createPostsTable conn = execute_ conn q
