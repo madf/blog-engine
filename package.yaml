@@ -1,6 +1,6 @@
-name:                blog
+name:                blog-engine
 version:             0.1.0.0
-github:              "madf/blog"
+github:              "madf/blog-engine"
 license:             BSD-3-Clause
 author:              "Maksym Mamontov"
 maintainer:          "blog@madf.info"
@@ -63,7 +63,7 @@ library:
   source-dirs: src
 
 executables:
-  blog-exe:
+  blog-engine:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -72,10 +72,10 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - base
-    - blog
+    - blog-engine
 
 tests:
-  blog-test:
+  blog-engine-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:

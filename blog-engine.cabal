@@ -4,11 +4,11 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 
-name:           blog
+name:           blog-engine
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/blog#readme>
-homepage:       https://github.com/madf/blog#readme
-bug-reports:    https://github.com/madf/blog/issues
+homepage:       https://github.com/madf/blog-engine#readme
+bug-reports:    https://github.com/madf/blog-engine/issues
 author:         Maksym Mamontov
 maintainer:     blog@madf.info
 copyright:      2025 Maksym Mamontov
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/madf/blog
+  location: https://github.com/madf/blog-engine
 
 library
   exposed-modules:
@@ -36,9 +36,9 @@ library
       Madf.Blog.Post
       Madf.Blog.Utils
   other-modules:
-      Paths_blog
+      Paths_blog_engine
   autogen-modules:
-      Paths_blog
+      Paths_blog_engine
   hs-source-dirs:
       src
   default-extensions:
@@ -70,12 +70,12 @@ library
     , xxhash-ffi
   default-language: Haskell2010
 
-executable blog-exe
+executable blog-engine
   main-is: Main.hs
   other-modules:
-      Paths_blog
+      Paths_blog_engine
   autogen-modules:
-      Paths_blog
+      Paths_blog_engine
   hs-source-dirs:
       app
   default-extensions:
@@ -86,7 +86,7 @@ executable blog-exe
     , JuicyPixels-extra
     , aeson
     , base
-    , blog
+    , blog-engine
     , bytestring
     , config-ini
     , directory
@@ -108,13 +108,13 @@ executable blog-exe
     , xxhash-ffi
   default-language: Haskell2010
 
-test-suite blog-test
+test-suite blog-engine-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_blog
+      Paths_blog_engine
   autogen-modules:
-      Paths_blog
+      Paths_blog_engine
   hs-source-dirs:
       test
   default-extensions:
