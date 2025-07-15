@@ -1,30 +1,8 @@
 let blockIdCounter = 0;
-const contentElement = document.getElementById('content');
 let post = undefined;
 
-const restoreOrCreatePost = async () => {
-  const post = window.sessionStorage.getItem('post');
-  if (post) {
-    return JSON.parse(post);
-  }
-
-  try {
-    const formData = new FormData();
-    formData.append('title', '');
-    formData.append('content', '[]');
-    resp = await fetch('/admin/api/post', {
-      method: 'POST',
-      body: formData
-    });
-    if (!resp.ok) {
-      throw new Error(`Failed to create a new post: ${resp.statusText}`);
-    }
-    const post = await resp.json();
-    window.sessionStorage.setItem('post', JSON.stringify(post));
-    return post;
-  } catch (error) {
-    console.log(error);
-  }
+const extractPost = () => {
+  return JSON.parse(document.getElementById('post').value);
 };
 
 const addTextBlock = () => {
@@ -505,8 +483,8 @@ const savePost = async () => {
   }
 };
 
-const onLoad = async () => {
-  post = await restoreOrCreatePost();
+const onLoad = () => {
+  post = extractPost();
   renderBlocks();
 };
 

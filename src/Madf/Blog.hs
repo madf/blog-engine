@@ -10,7 +10,6 @@ import Data.Maybe
 import Data.Pool
 import qualified Data.Aeson as DA
 import Database.SQLite.Simple
-import Control.Monad
 import Control.Monad.Reader
 import Web.Scotty.Trans as WS
 import qualified Network.HTTP.Types as NT
@@ -61,17 +60,9 @@ pages = do
         perPage <- queryParamMaybe "perPage"
         posts <- withConn $ \conn -> Post.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
         lucid (Pages.mainPage posts)
-    get    "/admin/new" $ lucid Pages.newPost
-    post   "/admin/new" $ do
-        t <- formParam "title"
-        c <- formParam "content"
-        case DA.eitherDecode c of
-            Right bs -> do
-                withConn $ \conn -> void $ Post.create conn t bs
-                redirect "/admin"
-            Left m -> do
-                status NT.badRequest400
-                lucid $ Pages.badRequest (DT.pack m)
+    get    "/admin/new" $ do
+        r <- withConn $ \conn -> Post.create conn "" []
+        redirect $ "/admin/edit/" <> (DTL.fromStrict . toText . Post.postId $ r)
     get    "/admin/edit/:postId" $ do
         i <- pathParam "postId"
         mp <- withConn $ \conn -> Post.get conn i

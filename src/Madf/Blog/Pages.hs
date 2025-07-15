@@ -1,6 +1,5 @@
 module Madf.Blog.Pages
     ( mainPage
-    , newPost
     , editPost
     , previewPost
     , notFound
@@ -71,19 +70,16 @@ extractText = \case
     (Post.TextBlock t) -> Just t
     _ -> Nothing
 
-newPost :: Html ()
-newPost = template $ postForm "" [] True
-
 editPost :: Post.Post -> Html ()
 editPost p = template $ postForm (Post.postTitle p) (Post.postContent p) (Post.postIsDraft p)
 
-postForm :: Text -> [Post.Block] -> Bool -> Html ()
-postForm t c isd = do
+postForm :: Post.Post -> Html ()
+postForm p = do
     with form_ [id_ "post-form", action_ "", method_ "post"] $ do
-        input_ [hidden_ "", type_ "text", name_ "content", id_ "content", (value_ . decodeUtf8 . toStrict . encode) c]
+        input_ [hidden_ "", type_ "text", name_ "post", id_ "post", (value_ . decodeUtf8 . toStrict . encode) p]
         with div_ [class_ "header"] $ do
             with label_ [for_ "title"] "Title:"
-            input_ [type_ "text", name_ "title", id_ "title", required_ "", value_ t]
+            input_ [type_ "text", name_ "title", id_ "title", required_ "", value_ (Post.postTitle p)]
         with div_ [class_ "editor"] $ do
             with div_ [id_ "blocksContainer"] mempty
             with div_ [class_ "add-buttons"] $ do
@@ -91,8 +87,8 @@ postForm t c isd = do
                 with button_ [id_ "add-carousel-block-button", class_ "btn btn-primary", type_ "button"] "Add carousel"
         with div_ [class_ "save-section"] $ do
             with label_ [for_ "is_draft"] "Draft:"
-            if isd then input_ [name_ "id_draft", id_ "is_draft", type_ "checkbox", checked_]
-                   else input_ [name_ "id_draft", id_ "is_draft", type_ "checkbox"]
+            if (Post.postIsDraft p) then input_ [name_ "id_draft", id_ "is_draft", type_ "checkbox", checked_]
+                                    else input_ [name_ "id_draft", id_ "is_draft", type_ "checkbox"]
             with button_ [id_ "save-button", class_ "btn btn-primary", type_ "button"] "Save"
     with (script_ "") [src_ "/js/edit.js"]
 
