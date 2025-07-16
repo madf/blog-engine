@@ -59,6 +59,7 @@ data ImageInfo = ImageInfo
     , imageInfoPreviewURL      :: !Text
     , imageInfoCreated         :: !UTCTime
     , imageInfoUpdated         :: !(Maybe UTCTime)
+    , imageInfoRefCount        :: !Int
     } deriving (Show, Generic, FromRow, ToRow)
 
 instance FromJSON ImageInfo
@@ -80,6 +81,7 @@ instance FromJSON ImageInfo
             <*> o .: "preview_url"
             <*> o .: "created"
             <*> o .: "updated"
+            <*> o .: "ref_count"
 
 data Image = Image
     { imageId   :: !ImageId
@@ -113,6 +115,9 @@ imagePreviewHeight = imageInfoPreviewHeight . imageInfo
 imagePreviewURL :: Image -> Text
 imagePreviewURL = imageInfoPreviewURL . imageInfo
 
+imageRefCount :: Image -> Int
+imageRefCount = imageInfoRefCount . imageInfo
+
 instance ToJSON Image
     where
         toJSON v = object
@@ -133,6 +138,7 @@ instance ToJSON Image
             , "preview_url"       .= (imageInfoPreviewURL . imageInfo) v
             , "created"           .= (imageInfoCreated . imageInfo) v
             , "updated"           .= (imageInfoUpdated . imageInfo) v
+            , "ref_count"         .= (imageInfoRefCount . imageInfo) v
             ]
         toEncoding v = pairs
             (  "id"                .= imageId v
@@ -152,6 +158,7 @@ instance ToJSON Image
             <> "preview_url"       .= (imageInfoPreviewURL . imageInfo) v
             <> "created"           .= (imageInfoCreated . imageInfo) v
             <> "updated"           .= (imageInfoUpdated . imageInfo) v
+            <> "ref_count"         .= (imageInfoRefCount . imageInfo) v
             )
 
 instance FromRow Image
@@ -165,8 +172,11 @@ instance FromJSON Image
             <*> parseJSON j)
             j
 
+imageFields :: Query
+imageFields = "images.id, images.post_id, images.caption, images.file_name, images.file_size, images.file_hash, images.width, images.height, images.mime_type, images.url, images.preview_file_name, images.preview_file_size, images.preview_width, images.preview_height, images.preview_url, images.created, images.updated, images.ref_count"
+
 selectBase :: Query
-selectBase = "SELECT id, post_id, caption, file_name, file_size, file_hash, width, height, mime_type, url, preview_file_name, preview_file_size, preview_width, preview_height, preview_url, created, updated FROM images"
+selectBase = "SELECT " <> imageFields <> " FROM images"
 
 get :: Connection -> ImageId -> IO (Maybe Image)
 get conn iid = listToMaybe <$> query conn (selectBase <> " WHERE id = ?") (Only iid)
@@ -183,7 +193,7 @@ getMultiple conn iids = withTransaction conn $ do
     execute_ conn "DROP TABLE IF EXISTS temp.image_ids"
     execute_ conn "CREATE TABLE temp.image_ids (id INTEGER NOT NULL)"
     mapM_ (execute conn "INSERT INTO temp.image_ids (id) VALUES (?)" . Only) iids
-    r <- query_ conn (selectBase <> " WHERE id IN (SELECT id FROM temp.image_ids)")
+    r <- query_ conn ("SELECT " <> imageFields <> " FROM temp.image_ids LEFT JOIN images ON images.id = temp.image_ids.id")
     execute_ conn "DROP TABLE temp.image_ids"
     return r
 
@@ -200,12 +210,24 @@ getFiles conn iid = listToMaybe <$> query conn "SELECT file_name, preview_file_n
 
 delete :: Connection -> ImageId -> IO ()
 delete conn iid = do
-    mfs <- getFiles conn iid
-    case mfs of
+    mi <- get conn iid
+    case mi of
         Nothing -> return ()
-        Just (sfn, spn) -> do
-            removeFiles sfn spn
-            execute conn "DELETE FROM images WHERE id = ?" (Only iid)
+        Just i -> do
+            let rc = imageRefCount i
+            if rc > 1 then updateRC conn iid (rc - 1)
+                      else doDelete
+    where
+        doDelete = do
+            mfs <- getFiles conn iid
+            case mfs of
+                Nothing -> return ()
+                Just (sfn, spn) -> do
+                    removeFiles sfn spn
+                    execute conn "DELETE FROM images WHERE id = ?" (Only iid)
+
+updateRC :: Connection -> ImageId -> Int -> IO ()
+updateRC conn iid rc = execute conn "UPDATE images SET ref_count = ? WHERE id = ?" (rc, iid)
 
 listByPost :: Connection -> PostId -> IO [Image]
 listByPost conn pid = query conn (selectBase <> " WHERE post_id = ?") (Only pid)
@@ -241,7 +263,9 @@ upload conn conf pid (_, fi) = do
     let fh = contentHash fi
     moimg <- findByHash conn pid fh
     case moimg of
-        Just img -> return img
+        Just img -> do
+            updateRC conn (imageId img) (succ . imageRefCount $ img)
+            return img
         Nothing -> doUpload fh
     where
         checkPId = Prelude.any fromOnly <$> query conn "SELECT EXISTS (SELECT 1 FROM posts WHERE id = ?)" (Only pid)
@@ -268,14 +292,14 @@ upload conn conf pid (_, fi) = do
             fs <- getSize sfn
             ps <- getSize spn
             now <- getCurrentTime
-            ri <- createImage conn (ImageInfo pid "" fn fs fh (width img) (height img) mime u pn ps pw ph pu now Nothing)
+            ri <- createImage conn (ImageInfo pid "" fn fs fh (width img) (height img) mime u pn ps pw ph pu now Nothing 1)
             case ri of
                 Left e -> cleanup e
                 Right i -> return i
 
 createImage :: Connection -> ImageInfo -> IO (Either Text Image)
 createImage conn info = do
-    miid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO images (post_id, caption, file_name, file_size, file_hash, width, height, mime_type, url, preview_file_name, preview_file_size, preview_width, preview_height, preview_url, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id" info :: IO (Maybe ImageId)
+    miid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO images (post_id, caption, file_name, file_size, file_hash, width, height, mime_type, url, preview_file_name, preview_file_size, preview_width, preview_height, preview_url, created, updated, ref_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id" info :: IO (Maybe ImageId)
     case miid of
         Nothing -> return $ Left "Cannot insert image into the DB"
         Just iid -> return $ Right (Image iid info)
