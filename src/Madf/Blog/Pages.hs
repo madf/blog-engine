@@ -71,7 +71,7 @@ extractText = \case
     _ -> Nothing
 
 editPost :: Post.Post -> Html ()
-editPost p = template $ postForm (Post.postTitle p) (Post.postContent p) (Post.postIsDraft p)
+editPost p = template $ postForm p
 
 postForm :: Post.Post -> Html ()
 postForm p = do

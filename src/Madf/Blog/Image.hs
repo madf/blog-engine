@@ -19,6 +19,7 @@ module Madf.Blog.Image
     , imagePreviewHeight
     , imagePreviewURL
     , upload
+    , getMultiple
     ) where
 
 import GHC.Generics
@@ -176,6 +177,9 @@ get' conn iid = do
     case mr of
         Just img -> return img
         Nothing -> error "Unknown image id"
+
+getMultiple :: Connection -> [ImageId] -> IO [Image]
+getMultiple conn iids = undefined
 
 getByFileName :: Connection -> PostId -> Text -> IO (Maybe Image)
 getByFileName conn pid fn = listToMaybe <$> query conn (selectBase <> " WHERE post_id = ? AND (file_name = ? OR preview_file_name = ?)") (pid, fn, fn)

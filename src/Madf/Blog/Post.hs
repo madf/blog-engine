@@ -19,18 +19,18 @@ import Database.SQLite.Simple
 import Madf.Blog.Ids
 import qualified Madf.Blog.Image as Image
 
-data Post a = Post
+data Post = Post
     { postId      :: !PostId
     , postCreated :: !UTCTime
     , postUpdated :: !(Maybe UTCTime)
     , postTitle   :: !Text
-    , postContent :: ![a]
+    , postContent :: ![Block]
     , postIsDraft :: !Bool
     } deriving (Show)
 
-data Block a = TextBlock !Text | CarouselBlock ![a] deriving (Show)
+data Block = TextBlock !Text | CarouselBlock ![Image.Image] deriving (Show)
 
-instance ToJSON a => ToJSON (Block a)
+instance ToJSON Block
     where
         toJSON (TextBlock t) = object
             [ "type"    .= ("text" :: Text)
@@ -49,7 +49,7 @@ instance ToJSON a => ToJSON (Block a)
             <> "content" .= is
             )
 
-instance FromJSON a => FromJSON (Block a)
+instance FromJSON Block
     where
         parseJSON = withObject "Madf.Blog.Block" $ \o -> do
             t <- o .: "type"
@@ -61,7 +61,7 @@ instance FromJSON a => FromJSON (Block a)
                 fromPieces "carousel" v = CarouselBlock <$> parseJSON v
                 fromPieces t _ = fail $ "Parsing Madf.Blog.Block failed, unexpected block type: '" ++ unpack t ++ "'."
 
-instance ToJSON a => ToJSON (Post a)
+instance ToJSON Post
     where
         toJSON v = object
             [ "id"       .= postId v
@@ -80,7 +80,7 @@ instance ToJSON a => ToJSON (Post a)
             <> "is_draft" .= postIsDraft v
             )
 
-instance FromJSON a => FromJSON (Post a)
+instance FromJSON Post
     where
         parseJSON = withObject "Madf.Blog.Post" $ \o -> Post
             <$> o .: "id"
