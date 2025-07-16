@@ -1,22 +1,18 @@
-module Madf.Blog.Post
+module Madf.Blog.Post.View
     ( Post (..)
     , Block (..)
-    , create
     , get
     , update
-    , delete
     , list
     ) where
 
 import Data.Text
-import Data.Text.Encoding
-import qualified Data.ByteString.Lazy as LBS
 import Data.Time
-import Data.Maybe
 import Data.Aeson
 import Data.Aeson.Types
 import Database.SQLite.Simple
 import Madf.Blog.Ids
+import qualified Madf.Blog.Post.Storage as Storage
 import qualified Madf.Blog.Image as Image
 
 data Post = Post
@@ -51,7 +47,7 @@ instance ToJSON Block
 
 instance FromJSON Block
     where
-        parseJSON = withObject "Madf.Blog.Block" $ \o -> do
+        parseJSON = withObject "Madf.Blog.Block.View" $ \o -> do
             t <- o .: "type"
             c <- o .: "content"
             fromPieces t c
@@ -59,7 +55,7 @@ instance FromJSON Block
                 fromPieces :: Text -> Value -> Parser Block
                 fromPieces "text" v = TextBlock <$> parseJSON v
                 fromPieces "carousel" v = CarouselBlock <$> parseJSON v
-                fromPieces t _ = fail $ "Parsing Madf.Blog.Block failed, unexpected block type: '" ++ unpack t ++ "'."
+                fromPieces t _ = fail $ "Parsing Madf.Blog.Block.View failed, unexpected block type: '" ++ unpack t ++ "'."
 
 instance ToJSON Post
     where
@@ -82,7 +78,7 @@ instance ToJSON Post
 
 instance FromJSON Post
     where
-        parseJSON = withObject "Madf.Blog.Post" $ \o -> Post
+        parseJSON = withObject "Madf.Blog.Post.View" $ \o -> Post
             <$> o .: "id"
             <*> o .: "created"
             <*> o .: "updated"
@@ -90,37 +86,36 @@ instance FromJSON Post
             <*> o .: "content"
             <*> o .: "is_draft"
 
-create :: Connection -> Text -> [Block] -> IO Post
-create conn t bs = do
-    now <- getCurrentTime
-    mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (title, content, is_draft, created, updated) VALUES (?, ?, ?, ?, ?) RETURNING id" (t, content, True, now, now)
-    case mpid of
-        Nothing -> error "Cannot create post"
-        Just pid -> do
-            mp <- get conn pid
-            case mp of
-                Nothing -> error "Cannot create post"
-                Just p -> return p
-    where
-        content = encode bs
-
 get :: Connection -> PostId -> IO (Maybe Post)
-get conn pid = fmap makePost . listToMaybe <$> query conn "SELECT id, created, updated, title, content, is_draft FROM posts WHERE id = ?" (Only pid)
+get conn pid = do
+    mp <- Storage.get conn pid
+    case mp of
+        Just p -> Just <$> fromStoragePost conn p
+        Nothing -> return Nothing
 
 update :: Connection -> PostId -> Text -> [Block] -> Bool -> IO ()
-update conn pid t bs isd = do
-    now <- getCurrentTime
-    execute conn "UPDATE posts SET title = ?, content = ?, is_draft = ? WHERE id = ?" (t, content, isd, pid)
-    where
-        content = encode bs
-
-delete :: Connection -> PostId -> IO ()
-delete conn pid = execute conn "DELETE FROM posts WHERE id = ?" (Only pid)
+update conn pid t bs isd = Storage.update conn pid t (toStorageBlocks bs) isd
 
 list :: Connection -> Int -> Int -> IO [Post]
-list conn page perPage = fmap makePost <$> query conn "SELECT id, created, updated, title, content, is_draft FROM posts LIMIT ? OFFSET ?" (perPage, page * perPage)
+list conn page perPage = do
+    ps <- Storage.list conn page perPage
+    mapM (fromStoragePost conn) ps
 
-makePost :: (PostId, UTCTime, Maybe UTCTime, Text, LBS.ByteString, Bool) -> Post
-makePost (pid, created, updated, t, c, isd) = Post pid created updated t (fromMaybe dataError $ decode c) isd
-    where
-        dataError = [TextBlock "Data error", TextBlock (decodeUtf8 $ LBS.toStrict c)]
+fromStorageBlocks :: Connection -> [Storage.Block] -> IO [Block]
+fromStorageBlocks conn = mapM (fromStorageBlock conn)
+
+toStorageBlocks :: [Block] -> [Storage.Block]
+toStorageBlocks = Prelude.map toStorageBlock
+
+toStorageBlock :: Block -> Storage.Block
+toStorageBlock (TextBlock t) = Storage.TextBlock t
+toStorageBlock (CarouselBlock is) = Storage.CarouselBlock (Prelude.map Image.imageId is)
+
+fromStorageBlock :: Connection -> Storage.Block -> IO Block
+fromStorageBlock _ (Storage.TextBlock t) = return $ TextBlock t
+fromStorageBlock conn (Storage.CarouselBlock iids) = CarouselBlock <$> Image.getMultiple conn iids
+
+fromStoragePost :: Connection -> Storage.Post -> IO Post
+fromStoragePost conn p = do
+    bs <- fromStorageBlocks conn (Storage.postContent p)
+    return $ Post (Storage.postId p) (Storage.postCreated p) (Storage.postUpdated p) (Storage.postTitle p) bs (Storage.postIsDraft p)

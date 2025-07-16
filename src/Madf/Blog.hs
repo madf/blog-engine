@@ -14,7 +14,8 @@ import Control.Monad.Reader
 import Web.Scotty.Trans as WS
 import qualified Network.HTTP.Types as NT
 import Network.Wai.Middleware.Static
-import qualified Madf.Blog.Post as Post
+import qualified Madf.Blog.Post.Storage as PostStorage
+import qualified Madf.Blog.Post.View as PostView
 import qualified Madf.Blog.Image as Image
 import qualified Madf.Blog.Env as Env
 import Madf.Blog.Config
@@ -58,14 +59,14 @@ pages = do
     get    "/admin" $ do
         page <- queryParamMaybe "page"
         perPage <- queryParamMaybe "perPage"
-        posts <- withConn $ \conn -> Post.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
+        posts <- withConn $ \conn -> PostView.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
         lucid (Pages.mainPage posts)
     get    "/admin/new" $ do
-        r <- withConn $ \conn -> Post.create conn "" []
-        redirect $ "/admin/edit/" <> (DTL.fromStrict . toText . Post.postId $ r)
+        r <- withConn $ \conn -> PostStorage.create conn
+        redirect $ "/admin/edit/" <> (DTL.fromStrict . toText . PostStorage.postId $ r)
     get    "/admin/edit/:postId" $ do
         i <- pathParam "postId"
-        mp <- withConn $ \conn -> Post.get conn i
+        mp <- withConn $ \conn -> PostView.get conn i
         case mp of
             Just p -> lucid $ Pages.editPost p
             Nothing -> do
@@ -78,18 +79,18 @@ pages = do
         d <- formParam "draft"
         case DA.eitherDecode c of
             Right bs -> do
-                withConn $ \conn -> Post.update conn i t bs d
+                withConn $ \conn -> PostView.update conn i t bs d
                 redirect $ toLazyText ("/admin/edit/" <> fromId i)
             Left m -> do
                 status NT.badRequest400
                 lucid $ Pages.badRequest (DT.pack m)
     delete "/admin/edit/:postId" $ do
         pid <- pathParam "postId"
-        withConn (`Post.delete` pid)
+        withConn (`PostStorage.delete` pid)
         redirect "/admin"
     get    "/admin/preview/:postId" $ do
         i <- pathParam "postId"
-        mp <- withConn $ \conn -> Post.get conn i
+        mp <- withConn $ \conn -> PostView.get conn i
         case mp of
             Just p -> lucid $ Pages.previewPost p
             Nothing -> do
@@ -130,17 +131,9 @@ imageAPI = do
 
 postAPI :: App ()
 postAPI = do
-    post   "/admin/api/post" $ do
-        t <- formParam "title"
-        c <- formParam "content"
-        case DA.eitherDecode c of
-            Right bs -> do
-                r <- withConn $ \conn -> Post.create conn t bs
-                json r
-            Left m -> status NT.badRequest400 >> json m
     get    "/admin/api/post/:postId" $ do
         pid <- pathParam "postId"
-        r <- withConn $ \conn -> Post.get conn pid
+        r <- withConn $ \conn -> PostView.get conn pid
         json r
     put    "/admin/api/post/:postId" $ do
         i <- pathParam "postId"
@@ -148,11 +141,11 @@ postAPI = do
         c <- formParam "content"
         d <- formParam "draft"
         case DA.eitherDecode c of
-            Right bs -> withConn $ \conn -> Post.update conn i t bs d
+            Right bs -> withConn $ \conn -> PostView.update conn i t bs d
             Left m -> status NT.badRequest400 >> json m
     delete "/admin/api/post/:postId" $ do
         pid <- pathParam "postId"
-        withConn $ \conn -> Post.delete conn pid
+        withConn $ \conn -> PostStorage.delete conn pid
     post   "/admin/api/post/:postId/image" $ do
         i <- pathParam "postId"
         fs <- files

@@ -12,7 +12,7 @@ import Data.ByteString.Lazy (toStrict)
 import Data.Maybe
 import Data.Aeson (encode)
 import Lucid
-import qualified Madf.Blog.Post as Post
+import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Image as Image
 import Madf.Blog.Utils
 

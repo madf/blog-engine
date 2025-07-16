@@ -179,7 +179,13 @@ get' conn iid = do
         Nothing -> error "Unknown image id"
 
 getMultiple :: Connection -> [ImageId] -> IO [Image]
-getMultiple conn iids = undefined
+getMultiple conn iids = withTransaction conn $ do
+    execute_ conn "DROP TABLE IF EXISTS temp.image_ids"
+    execute_ conn "CREATE TABLE temp.image_ids (id INTEGER NOT NULL)"
+    mapM_ (\iid -> execute conn "INSERT INTO temp.image_ids (id) VALUES (?)" (Only iid)) iids
+    r <- query_ conn (selectBase <> " WHERE id IN (SELECT id FROM temp.image_ids)")
+    execute_ conn "DROP TABLE temp.image_ids"
+    return r
 
 getByFileName :: Connection -> PostId -> Text -> IO (Maybe Image)
 getByFileName conn pid fn = listToMaybe <$> query conn (selectBase <> " WHERE post_id = ? AND (file_name = ? OR preview_file_name = ?)") (pid, fn, fn)

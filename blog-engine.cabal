@@ -33,7 +33,8 @@ library
       Madf.Blog.Ids
       Madf.Blog.Image
       Madf.Blog.Pages
-      Madf.Blog.Post
+      Madf.Blog.Post.Storage
+      Madf.Blog.Post.View
       Madf.Blog.Utils
   other-modules:
       Paths_blog_engine
