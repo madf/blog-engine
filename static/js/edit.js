@@ -23,30 +23,28 @@ const addCarouselBlock = () => {
   post.content.push(block);
 }
 
-const deleteBlock = blockId => {
-  post.content = post.content.filter(block => block.id !== blockId);
+const deleteBlock = idx => {
+  post.content.splice(idx, 1);
   renderBlocks();
 }
 
-const moveBlockUp = blockId => {
-  const index = post.content.findIndex(block => block.id === blockId);
-  if (index > 0) {
-    [post.content[index], post.content[index - 1]] = [post.content[index - 1], post.content[index]];
+const moveBlockUp = idx => {
+  if (idx > 0) {
+    [post.content[idx], post.content[idx - 1]] = [post.content[idx - 1], post.content[idx]];
     renderBlocks();
   }
 }
 
-const moveBlockDown = blockId => {
-  const index = post.content.findIndex(block => block.id === blockId);
-  if (index < post.content.length - 1) {
-    [post.content[index], post.content[index + 1]] = [post.content[index + 1], post.content[index]];
+const moveBlockDown = idx => {
+  if (idx < post.content.length - 1) {
+    [post.content[idx], post.content[idx + 1]] = [post.content[idx + 1], post.content[idx]];
     renderBlocks();
   }
 }
 
-const updateTextContent = (blockId, content) => {
-  console.log(`New text for block ${blockId}: ${content}`);
-  const block = post.content.find(b => b.id === blockId);
+const updateTextContent = (idx, content) => {
+  console.log(`New text for block ${idx}: ${content}`);
+  const block = post.content[idx];
   if (block) {
     block.content = content;
   }
@@ -76,8 +74,8 @@ const handleImageUpload = (blockId, files) => {
 }
 */
 
-const handleImageUpload = async (blockId, files) => {
-  const block = post.content.find(b => b.id === blockId);
+const handleImageUpload = async (blockIdx, files) => {
+  const block = post.content[blockIdx];
   if (!block || block.type !== 'carousel') return;
   let needSave = false;
 
@@ -87,9 +85,7 @@ const handleImageUpload = async (blockId, files) => {
     }
 
     // Show loading state
-    const tempId = Date.now() + Math.random();
     block.content.push({
-      id: tempId,
       preview_url: '/images/loading-placeholder.svg', // Loading placeholder
       caption: '',
       file_name: file.name,
@@ -118,7 +114,7 @@ const handleImageUpload = async (blockId, files) => {
       }
 
       // Replace temp image with uploaded result
-      const imageIndex = block.content.findIndex(img => img.id === tempId);
+      const imageIndex = block.content.findIndex(img => img.file_name === file.name && img.uploading);
       if (imageIndex !== -1) {
         block.content[imageIndex] = result[0];
         renderBlocks();
@@ -127,7 +123,7 @@ const handleImageUpload = async (blockId, files) => {
     } catch (error) {
       console.error('Upload failed:', error);
       // Remove failed upload from UI
-      block.content = block.content.filter(img => img.id !== tempId);
+      block.content = block.content.filter(img => img.file_name !== file.name || img.uploading);
       alert(`Failed to upload ${file.name}: ${error.message}`);
       renderBlocks();
     }
@@ -138,27 +134,32 @@ const handleImageUpload = async (blockId, files) => {
   }
 }
 
-function updateImageCaption(blockId, imageId, caption) {
-    const block = post.content.find(b => b.id === blockId);
-    if (block) {
-        const image = block.content.find(img => img.id === imageId);
-        if (image) {
-            image.caption = caption;
-        }
+const updateImageCaption = (blockIdx, idx, caption) => {
+  const block = post.content[blockIdx];
+  if (block) {
+    const image = block.content[idx];
+    if (image) {
+      image.caption = caption;
     }
+  }
 }
 
-const deleteImage = async (blockId, imageId) => {
-  const block = post.content.find(b => b.id === blockId);
-  if (block) {
+const deleteImage = async (blockIdx, idx) => {
+  const block = post.content[blockIdx];
+  if (!block) {
+    console.log(`Unknown block idx: {blockIdx}`);
+    return;
+  }
+  const img = block.content[idx];
+  if (block && img) {
     try {
-      resp = await fetch(`/admin/api/image/${imageId}`, {
+      resp = await fetch(`/admin/api/image/${img.id}`, {
         method: 'DELETE',
       });
       if (!resp.ok) {
         throw new Error(`Failed to delete image: ${resp.statusText}`);
       }
-      block.content = block.content.filter(img => img.id !== imageId);
+      block.content.splice(idx, 1);
     } catch (error) {
       console.log(error);
     }
@@ -167,25 +168,19 @@ const deleteImage = async (blockId, imageId) => {
   }
 };
 
-const moveImageLeft = (blockId, imageId) => {
-  const block = post.content.find(b => b.id === blockId);
-  if (block) {
-    const idx = block.content.findIndex(img => img.id == imageId);
-    if (idx > 0) {
-      [block.content[idx - 1], block.content[idx]] = [block.content[idx], block.content[idx - 1]];
-      renderBlocks();
-    }
+const moveImageLeft = (blockIdx, idx) => {
+  const block = post.content[blockIdx];
+  if (block && idx > 0) {
+    [block.content[idx - 1], block.content[idx]] = [block.content[idx], block.content[idx - 1]];
+    renderBlocks();
   }
 };
 
-const moveImageRight = (blockId, imageId) => {
-  const block = post.content.find(b => b.id === blockId);
-  if (block) {
-    const idx = block.content.findIndex(img => img.id == imageId);
-    if (idx < block.content.length - 1) {
-      [block.content[idx], block.content[idx + 1]] = [block.content[idx + 1], block.content[idx]];
-      renderBlocks();
-    }
+const moveImageRight = (blockIdx, idx) => {
+  const block = post.content[blockIdx];
+  if (block && idx < block.content.length - 1) {
+    [block.content[idx], block.content[idx + 1]] = [block.content[idx + 1], block.content[idx]];
+    renderBlocks();
   }
 };
 
@@ -198,14 +193,14 @@ const createButton = (className, handler, name) => {
   return btn;
 };
 
-const createBlockHeader = (block, index, title) => {
+const createBlockHeader = (idx, title) => {
   const ctrl = document.createElement('div');
   ctrl.className = 'block-controls';
-  const upBtn = createButton('btn btn-small btn-secondary', () => { moveBlockUp(block.id); }, '↑');
-  upBtn.disabled = index === 0;
-  const downBtn = createButton('btn btn-small btn-secondary', () => { moveBlockDown(block.id); }, '↓');
-  downBtn.disabled = index === post.content.length - 1;
-  const deleteBtn = createButton('btn btn-small btn-danger', () => { deleteBlock(block.id); }, 'Delete');
+  const upBtn = createButton('btn btn-small btn-secondary', () => { moveBlockUp(idx); }, '↑');
+  upBtn.disabled = idx === 0;
+  const downBtn = createButton('btn btn-small btn-secondary', () => { moveBlockDown(idx); }, '↓');
+  downBtn.disabled = idx === post.content.length - 1;
+  const deleteBtn = createButton('btn btn-small btn-danger', () => { deleteBlock(idx); }, 'Delete');
   ctrl.appendChild(upBtn);
   ctrl.appendChild(downBtn);
   ctrl.appendChild(deleteBtn);
@@ -216,10 +211,10 @@ const createBlockHeader = (block, index, title) => {
   return hdr;
 };
 
-const createTextContent = block => {
+const createTextContent = (block, idx) => {
   const ta = document.createElement('textarea');
   ta.placeholder = 'Enter your text here...';
-  ta.addEventListener('input', e => { updateTextContent(block.id, e.currentTarget.value); });
+  ta.addEventListener('input', e => { updateTextContent(idx, e.currentTarget.value); });
   ta.innerHTML = block.content;
   const tb = document.createElement('div');
   tb.className = 'text-block';
@@ -230,19 +225,19 @@ const createTextContent = block => {
   return cnt;
 };
 
-const createImageCaption = (block, img) => {
+const createImageCaption = (blockIdx, img, idx) => {
   const ic = document.createElement('div');
   ic.className = 'image-caption';
   const ici = document.createElement('input');
   ici.type = 'text';
   ici.placeholder = 'Image caption...';
   ici.value = img.caption;
-  ici.addEventListener('input', e => { updateImageCaption(block.id, img.id, e.currentTarget.value); });
+  ici.addEventListener('input', e => { updateImageCaption(blockIdx, idx, e.currentTarget.value); });
   ic.appendChild(ici);
   return ic;
 };
 
-const createImageControls = (block, img) => {
+const createImageControls = (blockIdx, img, idx) => {
   /*
     <div class="image-controls">
       <small>${image.filename}</small>
@@ -255,13 +250,13 @@ const createImageControls = (block, img) => {
   fn.innerHTML = img.file_name;
   fn.title = img.file_name;
   ic.appendChild(fn);
-  ic.appendChild(createButton('btn btn-small btn-secondary', () => { moveImageLeft(block.id, img.id); }, '<'));
-  ic.appendChild(createButton('btn btn-small btn-secondary', () => { moveImageRight(block.id, img.id); }, '>'));
-  ic.appendChild(createButton('btn btn-small btn-danger', () => { deleteImage(block.id, img.id); }, 'x'));
+  ic.appendChild(createButton('btn btn-small btn-secondary', () => { moveImageLeft(blockIdx, idx); }, '<'));
+  ic.appendChild(createButton('btn btn-small btn-secondary', () => { moveImageRight(blockIdx, idx); }, '>'));
+  ic.appendChild(createButton('btn btn-small btn-danger', () => { deleteImage(blockIdx, idx); }, 'x'));
   return ic;
 };
 
-const createImageUpload = block => {
+const createImageUpload = blockIdx => {
   /*
     <div class="image-upload">
       <label for="upload-${block.id}" class="upload-btn">
@@ -278,37 +273,37 @@ const createImageUpload = block => {
    */
   const iu = document.createElement('div');
   iu.className = 'image-upload';
-  iu.innerHTML = `<label for="upload-${block.id}" class="upload-btn">📁 Upload Images</label>`;
+  iu.innerHTML = `<label for="upload-${blockIdx}" class="upload-btn">📁 Upload Images</label>`;
   const iui = document.createElement('input');
   iui.type = 'file';
-  iui.id = `upload-${block.id}`;
+  iui.id = `upload-${blockIdx}`;
   iui.multiple = true;
   iui.accept="image/*";
-  iui.addEventListener('change', e => { handleImageUpload(block.id, e.currentTarget.files); });
+  iui.addEventListener('change', e => { handleImageUpload(blockIdx, e.currentTarget.files); });
   iu.appendChild(iui);
   return iu;
 };
 
-const createImageItem = (block, img) => {
+const createImageItem = (block, blockIdx, img, idx) => {
   const ii = document.createElement('div');
   ii.className = 'image-item';
   ii.innerHTML = `<img src="${img.preview_url}" alt="${img.caption}" class="image-preview">`;
-  ii.appendChild(createImageCaption(block, img));
-  ii.appendChild(createImageControls(block, img));
+  ii.appendChild(createImageCaption(blockIdx, img, idx));
+  ii.appendChild(createImageControls(blockIdx, img, idx));
   return ii;
 };
 
-const createCarouselContent = block => {
+const createCarouselContent = (block, blockIdx) => {
   const cb = document.createElement('div');
   cb.className = 'carousel-block';
-  cb.appendChild(createImageUpload(block));
+  cb.appendChild(createImageUpload(blockIdx));
   console.log(`Carousel images: ${block.content.length}`);
   if (block.content.length > 0)
   {
     const ig = document.createElement('div');
     ig.className = 'images-grid';
-    block.content.map(img => {
-      ig.appendChild(createImageItem(block, img));
+    block.content.map((img, idx) => {
+      ig.appendChild(createImageItem(block, blockIdx, img, idx));
     });
     cb.appendChild(ig);
   }
@@ -318,19 +313,19 @@ const createCarouselContent = block => {
   return cnt;
 };
 
-const createTextBlock = (block, index) => {
+const createTextBlock = (block, idx) => {
   const blk = document.createElement('div');
   blk.className = 'block';
-  blk.appendChild(createBlockHeader(block, index, `Text Block ${index + 1}`));
-  blk.appendChild(createTextContent(block));
+  blk.appendChild(createBlockHeader(idx, `Text Block ${idx + 1}`));
+  blk.appendChild(createTextContent(block, idx));
   return blk;
 };
 
-const createCarouselBlock = (block, index) => {
+const createCarouselBlock = (block, idx) => {
   const blk = document.createElement('div');
   blk.className = 'block';
-  blk.appendChild(createBlockHeader(block, index, `Carousel Block ${index + 1}`));
-  blk.appendChild(createCarouselContent(block));
+  blk.appendChild(createBlockHeader(idx, `Carousel Block ${idx + 1}`));
+  blk.appendChild(createCarouselContent(block, idx));
   return blk;
 };
 
@@ -348,11 +343,11 @@ function renderBlocks() {
 
   container.textContent = '';
 
-  post.content.map((block, index) => {
+  post.content.map((block, idx) => {
     if (block.type === 'text') {
-      container.appendChild(createTextBlock(block, index));
+      container.appendChild(createTextBlock(block, idx));
     } else if (block.type === 'carousel') {
-      container.appendChild(createCarouselBlock(block, index));
+      container.appendChild(createCarouselBlock(block, idx));
     }
   });
 
