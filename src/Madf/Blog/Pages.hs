@@ -88,8 +88,8 @@ postForm p = do
                 with button_ [id_ "add-carousel-block-button", class_ "btn btn-primary", type_ "button"] "Add carousel"
         with div_ [class_ "save-section"] $ do
             with label_ [for_ "is_draft"] "Draft:"
-            if (Post.postIsDraft p) then input_ [name_ "id_draft", id_ "is_draft", type_ "checkbox", checked_]
-                                    else input_ [name_ "id_draft", id_ "is_draft", type_ "checkbox"]
+            if Post.postIsDraft p then input_ [name_ "id_draft", id_ "is_draft", type_ "checkbox", checked_]
+                                  else input_ [name_ "id_draft", id_ "is_draft", type_ "checkbox"]
             with button_ [id_ "save-button", class_ "btn btn-primary", type_ "button"] "Save"
     with (script_ "") [src_ "/js/edit.js"]
 

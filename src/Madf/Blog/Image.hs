@@ -182,7 +182,7 @@ getMultiple :: Connection -> [ImageId] -> IO [Image]
 getMultiple conn iids = withTransaction conn $ do
     execute_ conn "DROP TABLE IF EXISTS temp.image_ids"
     execute_ conn "CREATE TABLE temp.image_ids (id INTEGER NOT NULL)"
-    mapM_ (\iid -> execute conn "INSERT INTO temp.image_ids (id) VALUES (?)" (Only iid)) iids
+    mapM_ (execute conn "INSERT INTO temp.image_ids (id) VALUES (?)" . Only) iids
     r <- query_ conn (selectBase <> " WHERE id IN (SELECT id FROM temp.image_ids)")
     execute_ conn "DROP TABLE temp.image_ids"
     return r
