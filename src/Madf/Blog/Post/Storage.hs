@@ -92,7 +92,7 @@ instance FromJSON Post
 create :: Connection -> IO Post
 create conn = do
     now <- getCurrentTime
-    mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (title, content, is_draft, created, updated) VALUES ('', '', ?, ?, ?) RETURNING id" (True, now, now)
+    mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (title, content, is_draft, created, updated) VALUES ('', ?, ?, ?, ?) RETURNING id" ("[]" :: LBS.ByteString, True, now, now)
     case mpid of
         Nothing -> error "Cannot create post"
         Just pid -> do
@@ -107,7 +107,7 @@ get conn pid = fmap makePost . listToMaybe <$> query conn "SELECT id, created, u
 update :: Connection -> PostId -> Text -> [Block] -> Bool -> IO ()
 update conn pid t bs isd = do
     now <- getCurrentTime
-    execute conn "UPDATE posts SET title = ?, content = ?, is_draft = ?, updated = ? WHERE id = ?" (t, content, isd, pid, now)
+    execute conn "UPDATE posts SET title = ?, content = ?, is_draft = ?, updated = ? WHERE id = ?" (t, content, isd, now, pid)
     where
         content = encode bs
 
@@ -117,7 +117,7 @@ delete conn pid = execute conn "DELETE FROM posts WHERE id = ?" (Only pid)
 list :: Connection -> Int -> Int -> IO [Post]
 list conn page perPage = fmap makePost <$> query conn "SELECT id, created, updated, title, content, is_draft FROM posts LIMIT ? OFFSET ?" (perPage, page * perPage)
 
-makePost :: (PostId, UTCTime, Maybe UTCTime, Text, Text, Bool) -> Post
-makePost (pid, created, updated, t, c, isd) = Post pid created updated t (fromMaybe dataError . decode . LBS.fromStrict . encodeUtf8 $ c) isd
+makePost :: (PostId, UTCTime, Maybe UTCTime, Text, LBS.ByteString, Bool) -> Post
+makePost (pid, created, updated, t, c, isd) = Post pid created updated t (fromMaybe dataError $ decode c) isd
     where
-        dataError = [TextBlock "Data error", TextBlock c]
+        dataError = [TextBlock "Data error", TextBlock (decodeUtf8 $ LBS.toStrict c)]

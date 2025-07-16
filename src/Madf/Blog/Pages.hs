@@ -78,7 +78,7 @@ postForm p = do
     with form_ [id_ "post-form", action_ "", method_ "post"] $ do
         input_ [hidden_ "", type_ "text", name_ "post", id_ "post", (value_ . decodeUtf8 . toStrict . encode) p]
         with div_ [class_ "header"] $ do
-            small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p) <> ". Updated: " <> maybe "never" timeToText (Post.postUpdated p))
+            div_ $ small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p) <> ". Updated: " <> maybe "never" timeToText (Post.postUpdated p))
             with label_ [for_ "title"] "Title:"
             input_ [type_ "text", name_ "title", id_ "title", required_ "", value_ (Post.postTitle p)]
         with div_ [class_ "editor"] $ do

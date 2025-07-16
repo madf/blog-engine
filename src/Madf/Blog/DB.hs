@@ -18,14 +18,14 @@ createInfoTable conn = do
     execute_ conn q
     execute_ conn "INSERT INTO info (schema_version) VALUES (1)"
     where
-        q = "CREATE TABLE info (schema_version INTEGER NOT NULL)"
+        q = "CREATE TABLE info (schema_version INTEGER NOT NULL) STRICT"
 
 createPostsTable :: Connection -> IO ()
 createPostsTable conn = execute_ conn q
     where
-        q = "CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL, is_draft BOOL NOT NULL, created INTEGER NOT NULL, updated INTEGER)"
+        q = "CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL, content BLOB NOT NULL, is_draft INT NOT NULL, created TEXT NOT NULL, updated TEXT) STRICT"
 
 createImagesTable :: Connection -> IO ()
 createImagesTable conn = execute_ conn q
     where
-        q = "CREATE TABLE images (id INTEGER PRIMARY KEY, post_id INTEGER NOT NULL, caption TEXT NOT NULL, file_name TEXT NOT NULL, file_size INTEGER NOT NULL, file_hash INT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, mime_type TEXT NOT NULL, url TEXT NOT NULL, preview_file_name TEXT NOT NULL, preview_file_size INTEGER NOT NULL, preview_width INTEGER NOT NULL, preview_height INTEGER NOT NULL, preview_url TEXT NOT NULL, created INTEGER NOT NULL, updated INTEGER, FOREIGN KEY (post_id) REFERENCES posts (id))"
+        q = "CREATE TABLE images (id INTEGER PRIMARY KEY, post_id INTEGER NOT NULL, caption TEXT NOT NULL, file_name TEXT NOT NULL, file_size INTEGER NOT NULL, file_hash INT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, mime_type TEXT NOT NULL, url TEXT NOT NULL, preview_file_name TEXT NOT NULL, preview_file_size INTEGER NOT NULL, preview_width INTEGER NOT NULL, preview_height INTEGER NOT NULL, preview_url TEXT NOT NULL, created TEXT NOT NULL, updated TEXT, FOREIGN KEY (post_id) REFERENCES posts (id)) STRICT"
