@@ -17,7 +17,7 @@ import Data.Hashable
 import Network.Wai.Parse (FileInfo (..))
 
 currentYear :: IO Text
-currentYear = (pack . formatTime defaultTimeLocale "%Y") <$> getCurrentTime
+currentYear = pack . formatTime defaultTimeLocale "%Y" <$> getCurrentTime
 
 timeToText :: UTCTime -> Text
 timeToText = pack . formatTime defaultTimeLocale "%F %T"

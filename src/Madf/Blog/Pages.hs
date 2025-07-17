@@ -56,7 +56,7 @@ extractText = \case
     _ -> Nothing
 
 editPost :: Post.Post -> Html ()
-editPost p = postForm p
+editPost = postForm
 
 postForm :: Post.Post -> Html ()
 postForm p = do
