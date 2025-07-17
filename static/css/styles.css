@@ -217,6 +217,10 @@ body {
     border-color: #6b7280;
 }
 
+.text-block {
+  margin: 20px;
+}
+
 .carousel-preview-block {
     max-width: 1200px;
     position: relative;
