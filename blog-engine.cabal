@@ -33,6 +33,8 @@ library
       Madf.Blog.Ids
       Madf.Blog.Image
       Madf.Blog.Pages
+      Madf.Blog.Pages.Preview
+      Madf.Blog.Pages.Template
       Madf.Blog.Post.Storage
       Madf.Blog.Post.View
       Madf.Blog.Utils

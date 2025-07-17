@@ -217,6 +217,94 @@ body {
     border-color: #6b7280;
 }
 
+.carousel-preview-block {
+    max-width: 1200px;
+    position: relative;
+    margin: auto;
+}
+
+.carousel-preview {
+    max-width: 1100px;
+    position: relative;
+    margin: auto;
+}
+
+.carousel-btn-prev, .carousel-btn-next {
+  cursor: pointer;
+  position: absolute;
+  top: 50%;
+  width: auto;
+  margin-top: -52px;
+  padding: 16px;
+  color: white;
+  background-color: rgba(0,0,0,0.3);
+  font-weight: bold;
+  font-size: 18px;
+  transition: 0.6s ease;
+  border-radius: 0 3px 3px 0;
+  user-select: none;
+}
+
+.carousel-btn-next {
+  right: 0;
+  border-radius: 3px 0 0 3px;
+}
+
+.carousel-btn-prev:hover, .carousel-btn-next:hover {
+  background-color: rgba(0,0,0,0.8);
+}
+
+.carousel-image {
+  display: block;
+  margin: auto;
+}
+
+.carousel-image-show {
+  display: block;
+}
+
+.carousel-image-hide {
+  display: none;
+}
+
+.carousel-image-caption {
+  color: #717171;
+  font-size: 15px;
+  padding: 8px 12px;
+  bottom: 8px;
+  width: 100%;
+  text-align: center;
+}
+
+.carousel-fade {
+  animation-name: fade;
+  animation-duration: 1.5s;
+}
+
+.carousel-dots {
+  text-align: center;
+}
+
+.carousel-dot {
+  cursor: pointer;
+  height: 15px;
+  width: 15px;
+  margin: 0 2px;
+  background-color: #bbb;
+  border-radius: 50%;
+  display: inline-block;
+  transition: background-color 0.6s ease;
+}
+
+.carousel-dot-active, .carousel-dot:hover {
+  background-color: #717171;
+}
+
+@keyframes fade {
+  from {opacity: .4}
+  to {opacity: 1}
+}
+
 .images-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -243,6 +331,8 @@ body {
 .image-caption {
     padding: 10px;
     margin-top: auto;
+    display: flex;
+    gap: 4px;
 }
 
 .image-caption input {
@@ -251,6 +341,11 @@ body {
     border: 1px solid #d1d5db;
     border-radius: 4px;
     font-size: 12px;
+    height: 100%;
+}
+
+.image-caption button {
+    height: 100%;
 }
 
 .image-controls {

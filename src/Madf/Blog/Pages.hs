@@ -1,7 +1,6 @@
 module Madf.Blog.Pages
     ( mainPage
     , editPost
-    , previewPost
     , notFound
     , badRequest
     ) where
@@ -16,23 +15,8 @@ import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Image as Image
 import Madf.Blog.Utils
 
-template :: Html () -> Html ()
-template b = doctypehtml_ $ do
-    head_ $ do
-        title_ "Madf's blog - Administrative interface"
-        link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/styles.css"]
-        meta_ [charset_ "UTF-8"]
-        meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1.0"]
-    body_ $ do
-        with div_ [class_ "container"] $ do
-            h1_ "Madf's blog - Administrative interface"
-            hr_ []
-            b
-            hr_ []
-            p_ "Copyright 2025 Maksym Mamontov"
-
 mainPage :: [Post.Post] -> Html ()
-mainPage posts = template $ do
+mainPage posts = do
     ul_ $ do
         mapM_ renderExerpt posts
 
@@ -72,7 +56,7 @@ extractText = \case
     _ -> Nothing
 
 editPost :: Post.Post -> Html ()
-editPost p = template $ postForm p
+editPost p = postForm p
 
 postForm :: Post.Post -> Html ()
 postForm p = do
@@ -94,36 +78,12 @@ postForm p = do
             with button_ [id_ "save-button", class_ "btn btn-primary", type_ "button"] "Save"
     with (script_ "") [src_ "/js/edit.js"]
 
-previewPost :: Post.Post -> Html ()
-previewPost p = template $ do
-    h2_ $ toHtml (Post.postTitle p)
-    div_ $ do
-        small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p) <> ". Updated: " <> maybe "never" timeToText (Post.postUpdated p))
-    hr_ []
-    mapM_ renderBlock (Post.postContent p)
-
-renderBlock :: Post.Block -> Html ()
-renderBlock = \case
-    Post.TextBlock t -> p_ $ toHtml t
-    Post.CarouselBlock is -> renderCarousel is
-
-renderCarousel :: [Image.Image] -> Html ()
-renderCarousel is = do
-    with div_ [class_ "images-grid"] $ do
-        mapM_ renderImage is
-
-renderImage :: Image.Image -> Html ()
-renderImage i = div_ $ do
-    with a_ [href_ (Image.imageURL i)] $ do
-        img_ [src_ (Image.imagePreviewURL i), alt_ (Image.imageCaption i), class_ "image-preview"]
-    p_ $ toHtml (Image.imageCaption i)
-
 notFound :: Text -> Html ()
-notFound m = template $ do
+notFound m = do
     h1_ "Not found"
     p_ $ toHtml m
 
 badRequest :: Text -> Html ()
-badRequest m = template $ do
+badRequest m = do
     h1_ "Bad request"
     p_ $ toHtml m

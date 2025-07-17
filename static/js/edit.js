@@ -142,7 +142,32 @@ const updateImageCaption = (blockIdx, idx, caption) => {
       image.caption = caption;
     }
   }
-}
+};
+
+const saveImageCaption = async (blockIdx, idx) => {
+  const block = post.content[blockIdx];
+  if (block) {
+    const image = block.content[idx];
+    if (image) {
+      try {
+        const formData = new FormData();
+        formData.append('caption', image.caption);
+
+        const response = await fetch(`/admin/api/image/${image.id}`, {
+          method: 'PUT',
+          body: formData,
+          credentials: 'include' // Include session cookie
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+        }
+      } catch (error) {
+        console.error('Image caption update failed:', error);
+      }
+    }
+  }
+};
 
 const deleteImage = async (blockIdx, idx) => {
   const block = post.content[blockIdx];
@@ -234,6 +259,8 @@ const createImageCaption = (blockIdx, img, idx) => {
   ici.value = img.caption;
   ici.addEventListener('input', e => { updateImageCaption(blockIdx, idx, e.currentTarget.value); });
   ic.appendChild(ici);
+  const icb = createButton('btn btn-small btn-secondary', () => { saveImageCaption(blockIdx, idx); }, '💾')
+  ic.appendChild(icb);
   return ic;
 };
 

@@ -21,7 +21,10 @@ import qualified Madf.Blog.Env as Env
 import Madf.Blog.Config
 import Madf.Blog.Ids
 import qualified Madf.Blog.Pages as Pages
+import qualified Madf.Blog.Pages.Preview as Pages
+import qualified Madf.Blog.Pages.Template as Pages
 import qualified Madf.Blog.DB as DB
+import Madf.Blog.Utils
 import Lucid
 
 type App a = ScottyT Env.EnvM a
@@ -54,13 +57,18 @@ lucid h = do
     setHeader "Content-Type" "text/html"
     raw (renderBS h)
 
+showPage :: Html () -> ActionT Env.EnvM ()
+showPage p = do
+    cy <- liftIO currentYear
+    lucid $ Pages.template cy p
+
 pages :: App ()
 pages = do
     get    "/admin" $ do
         page <- queryParamMaybe "page"
         perPage <- queryParamMaybe "perPage"
         posts <- withConn $ \conn -> PostView.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
-        lucid (Pages.mainPage posts)
+        showPage $ Pages.mainPage posts
     get    "/admin/new" $ do
         r <- withConn $ \conn -> PostStorage.create conn
         redirect $ "/admin/edit/" <> (DTL.fromStrict . toText . PostStorage.postId $ r)
@@ -68,10 +76,10 @@ pages = do
         i <- pathParam "postId"
         mp <- withConn $ \conn -> PostView.get conn i
         case mp of
-            Just p -> lucid $ Pages.editPost p
+            Just p -> showPage $ Pages.editPost p
             Nothing -> do
                 status NT.notFound404
-                lucid $ Pages.notFound "Unknown post id"
+                showPage $ Pages.notFound "Unknown post id"
     put    "/admin/edit/:postId" $ do
         i <- pathParam "postId"
         t <- formParam "title"
@@ -83,7 +91,7 @@ pages = do
                 redirect $ toLazyText ("/admin/edit/" <> fromId i)
             Left m -> do
                 status NT.badRequest400
-                lucid $ Pages.badRequest (DT.pack m)
+                showPage $ Pages.badRequest (DT.pack m)
     delete "/admin/edit/:postId" $ do
         pid <- pathParam "postId"
         withConn (`PostStorage.delete` pid)
@@ -92,10 +100,10 @@ pages = do
         i <- pathParam "postId"
         mp <- withConn $ \conn -> PostView.get conn i
         case mp of
-            Just p -> lucid $ Pages.previewPost p
+            Just p -> showPage $ Pages.preview p
             Nothing -> do
                 status NT.notFound404
-                lucid $ Pages.notFound "Unknown post id"
+                showPage $ Pages.notFound "Unknown post id"
 
 postData :: App ()
 postData = do

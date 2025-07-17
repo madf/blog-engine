@@ -2,6 +2,7 @@
 
 module Madf.Blog.Utils
     ( timeToText
+    , currentYear
     , mapLeft
     , contentHash
     , fileHash
@@ -14,6 +15,9 @@ import Data.Time.Format
 import Data.Digest.XXHash.FFI
 import Data.Hashable
 import Network.Wai.Parse (FileInfo (..))
+
+currentYear :: IO Text
+currentYear = (pack . formatTime defaultTimeLocale "%Y") <$> getCurrentTime
 
 timeToText :: UTCTime -> Text
 timeToText = pack . formatTime defaultTimeLocale "%F %T"
