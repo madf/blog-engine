@@ -24,11 +24,12 @@ template b = doctypehtml_ $ do
         meta_ [charset_ "UTF-8"]
         meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1.0"]
     body_ $ do
-        h1_ "Madf's blog - Administrative interface"
-        hr_ []
-        b
-        hr_ []
-        p_ "Copyright 2025 Maksym Mamontov"
+        with div_ [class_ "container"] $ do
+            h1_ "Madf's blog - Administrative interface"
+            hr_ []
+            b
+            hr_ []
+            p_ "Copyright 2025 Maksym Mamontov"
 
 mainPage :: [Post.Post] -> Html ()
 mainPage posts = template $ do
