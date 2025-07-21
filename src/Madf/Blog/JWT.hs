@@ -92,16 +92,16 @@ make :: Env -> IO LBS.ByteString
 make env = do
     t <- getCurrentTime
     r <- JOSE.runJOSE $ do
-        JOSE.encodeCompact <$> JOSE.signClaims (jwk env) (JOSE.newJWSHeader ((), (alg env))) (claims t)
+        JOSE.encodeCompact <$> JOSE.signClaims (jwk env) (JOSE.newJWSHeader ((), alg env)) (claims t)
     case r of
         Left e -> makeError e
         Right v -> return v
     where
         claims t = JOSE.emptyClaimsSet
             & JOSE.claimIss ?~ (JOSE.string # (keyIssuer . config $ env))
-            & JOSE.claimAud ?~ (JOSE.Audience ["admin"])
-            & JOSE.claimIat ?~ (JOSE.NumericDate t)
-            & JOSE.claimExp ?~ (JOSE.NumericDate $ addUTCTime (keyExp . config $ env) t)
+            & JOSE.claimAud ?~ JOSE.Audience ["admin"]
+            & JOSE.claimIat ?~ JOSE.NumericDate t
+            & JOSE.claimExp ?~ JOSE.NumericDate (addUTCTime (keyExp . config $ env) t)
         makeError :: JOSE.JWTError -> IO LBS.ByteString
         makeError = error . show
 
