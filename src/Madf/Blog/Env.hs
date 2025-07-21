@@ -14,10 +14,12 @@ import Database.SQLite.Simple
 import Control.Monad.Reader
 import Control.Monad.IO.Unlift (MonadUnliftIO(..))
 import qualified Madf.Blog.Config as C
+import qualified Madf.Blog.JWT as JWT
 
 data Env = Env
     { config :: !C.Config
     , pool   :: !(Pool Connection)
+    , jwt    :: !JWT.Env
     }
 
 newtype EnvM a = EnvM
@@ -45,9 +47,11 @@ create fp = do
         Left e -> error (unpack e)
         Right c -> do
             p <- createPool c
-            return $ Env c p
+            je <- JWT.create (C.jwt c)
+            return $ Env c p je
 
 defaultEnv :: IO Env
 defaultEnv = do
     p <- createPool C.defaultConfig
-    return $ Env C.defaultConfig p
+    je <- JWT.create JWT.defaultConfig
+    return $ Env C.defaultConfig p je

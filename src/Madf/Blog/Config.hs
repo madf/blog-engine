@@ -12,12 +12,14 @@ import Data.Text
 import qualified Data.Text.IO as DTIO
 import Data.Ini.Config
 import Data.Password.Argon2
+import qualified Madf.Blog.JWT as JWT
 import Madf.Blog.Utils
 
 data Config = Config
     { db     :: !DBConfig
     , images :: !ImagesConfig
     , admin  :: !AdminConfig
+    , jwt    :: !JWT.Config
     } deriving (Show)
 
 newtype DBConfig = DBConfig
@@ -50,6 +52,7 @@ defaultConfig = Config
     (DBConfig "test.db")
     (ImagesConfig "data/images" 300 100 "preview-" "/data/images")
     (AdminConfig "admin" defaultPasswordHash)
+    JWT.defaultConfig
 
 parser :: IniParser Config
 parser = do
@@ -67,4 +70,5 @@ parser = do
         l <- pack <$> fieldOf "login" string
         ph <- PasswordHash . pack <$> fieldOf "password_hash" string
         return $ AdminConfig l ph
-    return $ Config dc ic ac
+    jc <- section "jwt" JWT.parser
+    return $ Config dc ic ac jc
