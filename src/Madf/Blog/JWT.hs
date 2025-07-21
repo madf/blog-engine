@@ -4,45 +4,56 @@ module Madf.Blog.JWT
     , create
     , defaultConfig
     , parser
+    , make
+    , verify
     ) where
 
 import Data.Text
 import Data.Text.Read
+import qualified Data.ByteString.Lazy as LBS
 import Data.Ini.Config
+import Data.Time
+import Control.Lens
 import qualified Crypto.JOSE.JWK as JOSE
 import qualified Crypto.JWT as JOSE
 
 data Env = Env
-    { jwk :: !JOSE.JWK
-    , alg :: !JOSE.Alg
-    } deriving (Show)
+    { jwk        :: !JOSE.JWK
+    , alg        :: !JOSE.Alg
+    , validation :: !JOSE.JWTValidationSettings
+    , config     :: !Config
+    }
 
 data Config = Config
-    { path     :: !FilePath
-    , genParam :: !JOSE.KeyMaterialGenParam
+    { path          :: !FilePath
+    , genParam      :: !JOSE.KeyMaterialGenParam
+    , keyExp        :: !NominalDiffTime
+    , keyIssuer     :: !Text
     } deriving (Show)
 
 data KeyType = HMAC | EC | RSA | EdDSA
 
 create :: Config -> IO Env
-create (Config p gp) = do
-    k <- JOSE.genJWK gp
+create conf = do
+    k <- JOSE.genJWK (genParam conf)
     case JOSE.bestJWSAlg k of
         Left e -> makeError e
-        Right a -> return $ Env k a
+        Right a -> return $ Env k a (JOSE.defaultJWTValidationSettings (== "admin")) conf
     where
         makeError :: JOSE.JWTError -> IO Env
         makeError = error . show
 
 defaultConfig :: Config
-defaultConfig = Config "key.jwk" (JOSE.ECGenParam JOSE.P_384)
+defaultConfig = Config "key.jwk" (JOSE.ECGenParam JOSE.P_384) 3600 "Madf.Blog"
 
 parser :: SectionParser Config
 parser = do
     p <- fieldOf "path" string
     kt <- fieldOf "key_type" keyType
     km <- fieldOf "key_param" (keyMaterialGenParam kt)
-    return $ Config p km
+    ke <- fieldOf "key_expiration" keyExpiration
+    ki <- fieldOf "key_issuer" string
+    return $ Config p km ke ki
 
 keyType :: Text -> Either String KeyType
 keyType = \case
@@ -51,6 +62,9 @@ keyType = \case
     "rsa" -> Right RSA
     "eddsa" -> Right EdDSA
     v -> Left . unpack $ "Unknown key type: '" <> v <> "'."
+
+keyExpiration :: Text -> Either String NominalDiffTime
+keyExpiration t = fromInteger <$> number t
 
 keyMaterialGenParam :: KeyType -> Text -> Either String JOSE.KeyMaterialGenParam
 keyMaterialGenParam HMAC t  = JOSE.OctGenParam . fst <$> decimal t
@@ -73,3 +87,33 @@ parseEdCurve = \case
     "X25519" -> Right JOSE.X25519
     "X448" -> Right JOSE.X448
     v -> Left . unpack $ "Unknown Edwards curve: '" <> v <> "'."
+
+make :: Env -> IO LBS.ByteString
+make env = do
+    t <- getCurrentTime
+    r <- JOSE.runJOSE $ do
+        JOSE.encodeCompact <$> JOSE.signClaims (jwk env) (JOSE.newJWSHeader ((), (alg env))) (claims t)
+    case r of
+        Left e -> makeError e
+        Right v -> return v
+    where
+        claims t = JOSE.emptyClaimsSet
+            & JOSE.claimIss ?~ (JOSE.string # (keyIssuer . config $ env))
+            & JOSE.claimAud ?~ (JOSE.Audience ["admin"])
+            & JOSE.claimIat ?~ (JOSE.NumericDate t)
+            & JOSE.claimExp ?~ (JOSE.NumericDate $ addUTCTime (keyExp . config $ env) t)
+        makeError :: JOSE.JWTError -> IO LBS.ByteString
+        makeError = error . show
+
+verify :: Env -> LBS.ByteString -> IO ()
+verify env t = do
+    case JOSE.decodeCompact t of
+        Left e -> makeError e
+        Right jwt -> do
+            r <- JOSE.runJOSE $ JOSE.verifyClaims (validation env) (jwk env) jwt
+            case r of
+                Left e -> makeError e
+                Right _ -> return ()
+    where
+        makeError :: JOSE.JWTError -> IO ()
+        makeError = error . show
