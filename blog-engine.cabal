@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Madf.Blog
+      Madf.Blog.Auth
       Madf.Blog.Config
       Madf.Blog.DB
       Madf.Blog.Env
@@ -33,6 +34,7 @@ library
       Madf.Blog.Ids
       Madf.Blog.Image
       Madf.Blog.JWT
+      Madf.Blog.Login
       Madf.Blog.Pages
       Madf.Blog.Pages.Preview
       Madf.Blog.Pages.Template
@@ -70,6 +72,7 @@ library
     , time
     , unliftio-core
     , wai
+    , wai-cors
     , wai-extra
     , wai-middleware-static
     , warp
@@ -110,6 +113,7 @@ executable blog-engine
     , time
     , unliftio-core
     , wai
+    , wai-cors
     , wai-extra
     , wai-middleware-static
     , warp
@@ -154,6 +158,7 @@ test-suite blog-engine-test
     , time
     , unliftio-core
     , wai
+    , wai-cors
     , wai-extra
     , wai-middleware-static
     , warp

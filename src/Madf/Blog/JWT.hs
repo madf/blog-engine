@@ -4,12 +4,14 @@ module Madf.Blog.JWT
     , create
     , defaultConfig
     , parser
-    , make
-    , verify
+    , issue
+    , check
+    , renew
     ) where
 
 import Data.Text
 import Data.Text.Read
+import Data.Text.Encoding
 import qualified Data.ByteString.Lazy as LBS
 import Data.Ini.Config
 import Data.Time
@@ -105,6 +107,9 @@ make env = do
         makeError :: JOSE.JWTError -> IO LBS.ByteString
         makeError = error . show
 
+issue :: Env -> IO Text
+issue env = decodeUtf8 . LBS.toStrict <$> make env
+
 verify :: Env -> LBS.ByteString -> IO ()
 verify env t = do
     case JOSE.decodeCompact t of
@@ -117,3 +122,9 @@ verify env t = do
     where
         makeError :: JOSE.JWTError -> IO ()
         makeError = error . show
+
+check :: Env -> Text -> IO ()
+check env t = verify env (LBS.fromStrict . encodeUtf8 $ t)
+
+renew :: Env -> Text -> IO Text
+renew env t = check env t >> issue env

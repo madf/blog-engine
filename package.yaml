@@ -26,6 +26,7 @@ dependencies:
 - lucid
 - wai
 - wai-middleware-static
+- wai-cors
 - wai-extra
 - warp
 - http-types

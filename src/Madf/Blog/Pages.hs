@@ -1,5 +1,6 @@
 module Madf.Blog.Pages
     ( mainPage
+    , loginPage
     , editPost
     , notFound
     , badRequest
@@ -19,6 +20,9 @@ mainPage :: [Post.Post] -> Html ()
 mainPage posts = do
     ul_ $ do
         mapM_ renderExerpt posts
+
+loginPage :: Html ()
+loginPage = mempty
 
 renderExerpt :: Post.Post -> Html ()
 renderExerpt p = li_ $ do
