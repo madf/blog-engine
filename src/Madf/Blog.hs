@@ -6,12 +6,15 @@ module Madf.Blog
 import Data.Text.Lazy.Builder
 import qualified Data.Text as DT
 import qualified Data.Text.Lazy as DTL
+import Data.Text.Encoding
 import Data.Maybe
 import Data.Pool
 import qualified Data.Aeson as DA
 import Database.SQLite.Simple
+import Control.Monad
 import Control.Monad.Reader
 import Web.Scotty.Trans as WS
+import Web.Scotty.Cookie
 import qualified Network.HTTP.Types as NT
 import Network.Wai.Middleware.Static
 import Network.Wai.Middleware.Cors
@@ -85,7 +88,20 @@ pages = do
         posts <- withConn $ \conn -> PostView.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
         showPage $ Pages.mainPage posts
     get    "/admin/login" $ do
-        showPage Pages.loginPage
+        me <- queryParamMaybe "error"
+        showPage $ Pages.loginPage me
+    post   "/admin/login" $ do
+        f <- queryParamMaybe "from"
+        l <- formParam "login"
+        p <- formParam "password"
+        conf <- lift $ asks Env.config
+        if Login.verify (admin conf) l p
+            then do
+                jwtEnv <- lift $ asks Env.jwt
+                t <- liftIO $ JWT.issue jwtEnv
+                setCookie $ defaultSetCookie { setCookieName = "authtoken", setCookieValue = encodeUtf8 t, setCookiePath = Just "/" }
+                redirect (fromMaybe "/admin" f)
+            else Auth.redirectUnauthorized (DTL.toStrict <$> f) "Bad credentials"
     get    "/admin/new" $ do
         Auth.require
         r <- withConn $ \conn -> PostStorage.create conn

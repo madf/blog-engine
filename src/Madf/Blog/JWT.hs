@@ -1,6 +1,7 @@
 module Madf.Blog.JWT
     ( Env (..)
     , Config (..)
+    , Result (..)
     , create
     , defaultConfig
     , parser
@@ -110,7 +111,9 @@ make env = do
 issue :: Env -> IO Text
 issue env = decodeUtf8 . LBS.toStrict <$> make env
 
-verify :: Env -> LBS.ByteString -> IO ()
+data Result = Error Text | Ok deriving (Show)
+
+verify :: Env -> LBS.ByteString -> IO Result
 verify env t = do
     case JOSE.decodeCompact t of
         Left e -> makeError e
@@ -118,12 +121,12 @@ verify env t = do
             r <- JOSE.runJOSE $ JOSE.verifyClaims (validation env) (jwk env) jwt
             case r of
                 Left e -> makeError e
-                Right _ -> return ()
+                Right _ -> return Ok
     where
-        makeError :: JOSE.JWTError -> IO ()
-        makeError = error . show
+        makeError :: JOSE.JWTError -> IO Result
+        makeError = return . Error . pack . show
 
-check :: Env -> Text -> IO ()
+check :: Env -> Text -> IO Result
 check env t = verify env (LBS.fromStrict . encodeUtf8 $ t)
 
 renew :: Env -> Text -> IO Text

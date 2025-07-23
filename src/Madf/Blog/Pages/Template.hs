@@ -14,9 +14,11 @@ template y b = doctypehtml_ $ do
         meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1.0"]
     body_ $ do
         with div_ [class_ "container"] $ do
-            h1_ "Madf's blog - Administrative interface"
-            hr_ []
-            b
-            hr_ []
-            if y == "2025" then p_ "Copyright 2025 Maksym Mamontov"
-                           else p_ ("Copyright 2025-" <> toHtml y <> " Maksym Mamontov")
+            header_ $ do
+                h1_ "Madf's blog - Administrative interface"
+                hr_ []
+            main_ b
+            footer_ $ do
+                hr_ []
+                if y == "2025" then p_ "Copyright 2025 Maksym Mamontov"
+                               else p_ ("Copyright 2025-" <> toHtml y <> " Maksym Mamontov")
