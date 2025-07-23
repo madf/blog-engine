@@ -11,7 +11,6 @@ import Data.Maybe
 import Data.Pool
 import qualified Data.Aeson as DA
 import Database.SQLite.Simple
-import Control.Monad
 import Control.Monad.Reader
 import Web.Scotty.Trans as WS
 import Web.Scotty.Cookie
@@ -146,7 +145,7 @@ pages = do
 postData :: App ()
 postData = do
     get "/data/images/:postId/:fileName" $ do
-        Auth.require
+        Auth.requireNoRedirect
         pid <- pathParam "postId"
         fn <- pathParam "fileName"
         mi <- withConn $ \conn -> Image.getByFileName conn pid fn
@@ -174,41 +173,42 @@ loginAPI = do
             json t
              else status NT.unauthorized401 >> jsonError "Bad credentials"
     post "/admin/api/token/renew" $ do
-        mt <- header "Authroization"
+        mt <- getCookie "authtoken"
         case mt of
             Nothing -> status NT.unauthorized401 >> jsonError "No authorization token"
             Just t -> do
                 jwtEnv <- lift $ asks Env.jwt
-                nt <- liftIO $ JWT.renew jwtEnv (DTL.toStrict t)
+                nt <- liftIO $ JWT.renew jwtEnv t
+                setCookie $ defaultSetCookie { setCookieName = "authtoken", setCookieValue = encodeUtf8 nt, setCookiePath = Just "/" }
                 json nt
 
 imageAPI :: App ()
 imageAPI = do
     get    "/admin/api/image/:imageId" $ do
-        Auth.require
+        Auth.requireNoRedirect
         iid <- pathParam "imageId"
         r <- withConn (`Image.get` iid)
         json r
     put    "/admin/api/image/:imageId" $ do
-        Auth.require
+        Auth.requireNoRedirect
         i <- pathParam "imageId"
         c <- formParam "caption"
         r <- withConn  $ \conn -> Image.updateCaption conn i c
         json r
     delete "/admin/api/image/:imageId" $ do
-        Auth.require
+        Auth.requireNoRedirect
         iid <- pathParam "imageId"
         withConn (`Image.delete` iid)
 
 postAPI :: App ()
 postAPI = do
     get    "/admin/api/post/:postId" $ do
-        Auth.require
+        Auth.requireNoRedirect
         pid <- pathParam "postId"
         r <- withConn $ \conn -> PostView.get conn pid
         json r
     put    "/admin/api/post/:postId" $ do
-        Auth.require
+        Auth.requireNoRedirect
         i <- pathParam "postId"
         t <- formParam "title"
         c <- formParam "content"
@@ -217,11 +217,11 @@ postAPI = do
             Right bs -> withConn $ \conn -> PostView.update conn i t bs d
             Left m -> status NT.badRequest400 >> json m
     delete "/admin/api/post/:postId" $ do
-        Auth.require
+        Auth.requireNoRedirect
         pid <- pathParam "postId"
         withConn $ \conn -> PostStorage.delete conn pid
     post   "/admin/api/post/:postId/image" $ do
-        Auth.require
+        Auth.requireNoRedirect
         i <- pathParam "postId"
         fs <- files
         conf <- askConfig
