@@ -19,7 +19,7 @@ preview p = do
 
 renderBlock :: (Post.Block, Int) -> Html ()
 renderBlock = \case
-    (Post.TextBlock t, _) -> with p_ [class_ "text-block"] $ toHtml t
+    (Post.TextBlock t, _) -> with p_ [class_ "text-block-preview"] $ toHtml t
     (Post.CarouselBlock is, idx) -> renderCarousel idx is
 
 renderCarousel :: Int -> [Image.Image] -> Html ()

@@ -3,7 +3,6 @@ module Madf.Blog
     , routes
     ) where
 
-import Data.Text.Lazy.Builder
 import qualified Data.Text as DT
 import qualified Data.Text.Lazy as DTL
 import Data.Text.Encoding
@@ -24,7 +23,9 @@ import qualified Madf.Blog.Env as Env
 import Madf.Blog.Config
 import Madf.Blog.Ids
 import qualified Madf.Blog.Pages as Pages
+import qualified Madf.Blog.Pages.Edit as Pages
 import qualified Madf.Blog.Pages.Preview as Pages
+import qualified Madf.Blog.Pages.Login as Pages
 import qualified Madf.Blog.Pages.Template as Pages
 import qualified Madf.Blog.DB as DB
 import qualified Madf.Blog.JWT as JWT
@@ -110,23 +111,10 @@ pages = do
         i <- pathParam "postId"
         mp <- withConn $ \conn -> PostView.get conn i
         case mp of
-            Just p -> showPage $ Pages.editPost p
+            Just p -> showPage $ Pages.editPage p
             Nothing -> do
                 status NT.notFound404
                 showPage $ Pages.notFound "Unknown post id"
-    put    "/admin/edit/:postId" $ do
-        Auth.require
-        i <- pathParam "postId"
-        t <- formParam "title"
-        c <- formParam "content"
-        d <- formParam "draft"
-        case DA.eitherDecode c of
-            Right bs -> do
-                withConn $ \conn -> PostView.update conn i t bs d
-                redirect $ toLazyText ("/admin/edit/" <> fromId i)
-            Left m -> do
-                status NT.badRequest400
-                showPage $ Pages.badRequest (DT.pack m)
     delete "/admin/edit/:postId" $ do
         Auth.require
         pid <- pathParam "postId"

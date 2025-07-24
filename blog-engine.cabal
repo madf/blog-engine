@@ -36,6 +36,8 @@ library
       Madf.Blog.JWT
       Madf.Blog.Login
       Madf.Blog.Pages
+      Madf.Blog.Pages.Edit
+      Madf.Blog.Pages.Login
       Madf.Blog.Pages.Preview
       Madf.Blog.Pages.Template
       Madf.Blog.Post.Storage

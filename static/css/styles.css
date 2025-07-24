@@ -18,10 +18,23 @@ body {
   flex-direction: column;
 }
 
+header {
+  padding: 20px;
+  text-align: center;
+}
+
+footer {
+  padding: 20px;
+}
+
+main {
+  padding: 20px;
+}
+
 .container {
   width: 75%;
   height: 100%;
-  max-width: 1200px;
+  max-width: 1000px;
   margin: 0 auto;
   background: white;
   border-radius: 8px;
@@ -212,6 +225,14 @@ body {
     position: relative;
 }
 
+.text-block-preview {
+  margin-top: 20px;
+}
+
+.text-block {
+  margin: 20px;
+}
+
 .text-block::before {
     content: '¶';
     position: absolute;
@@ -279,14 +300,12 @@ body {
     border-color: #6b7280;
 }
 
-.text-block {
-  margin: 20px;
-}
-
 .carousel-preview-block {
-    max-width: 1200px;
+    max-width: 1000px;
+    width: 100%;
     position: relative;
     margin: auto;
+    margin-top: 20px;
 }
 
 .carousel-preview {
