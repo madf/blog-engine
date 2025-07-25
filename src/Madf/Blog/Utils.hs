@@ -2,6 +2,7 @@
 
 module Madf.Blog.Utils
     ( timeToText
+    , splitDate
     , currentYear
     , mapLeft
     , contentHash
@@ -17,10 +18,16 @@ import Data.Hashable
 import Network.Wai.Parse (FileInfo (..))
 
 currentYear :: IO Text
-currentYear = pack . formatTime defaultTimeLocale "%Y" <$> getCurrentTime
+currentYear = ft "%Y" <$> getCurrentTime
 
 timeToText :: UTCTime -> Text
-timeToText = pack . formatTime defaultTimeLocale "%F %T"
+timeToText = ft "%F %T"
+
+splitDate :: UTCTime -> (Text, Text)
+splitDate t = (ft "%b" t, ft "%d" t)
+
+ft :: String -> UTCTime -> Text
+ft f t = pack (formatTime defaultTimeLocale f t)
 
 mapLeft :: (a -> b) -> Either a c -> Either b c
 mapLeft f = \case

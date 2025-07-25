@@ -10,11 +10,16 @@ import Madf.Blog.Utils
 
 preview :: Post.Post -> Html ()
 preview p = do
-    h2_ $ toHtml (Post.postTitle p)
-    div_ $ do
-        small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p) <> ". Updated: " <> maybe "never" timeToText (Post.postUpdated p))
+    with div_ [class_ "post-header"] $ do
+        with div_ [class_ "date-box"] $ do
+            let (m, d) = splitDate (Post.postCreated p)
+            span_ $ toHtml m
+            span_ $ toHtml d
+        h2_ $ toHtml (Post.postTitle p)
     hr_ []
     mapM_ renderBlock (Prelude.zip (Post.postContent p) [1..])
+    div_ [class_ "post-footer"] $ do
+        small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p) <> ". Updated: " <> maybe "never" timeToText (Post.postUpdated p))
     with (script_ "") [src_ "/js/carousel.js"]
 
 renderBlock :: (Post.Block, Int) -> Html ()
