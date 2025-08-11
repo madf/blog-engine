@@ -51,10 +51,12 @@ askConfig = lift $ asks Env.config
 serve :: Env.Env -> IO ()
 serve env = do
     withResource (Env.pool env) DB.check
-    scottyOptsT WS.defaultOptions (Env.runIO env) routes
+    scottyOptsT WS.defaultOptions (Env.runIO env) (routes base)
+    where
+        base = urlBase . main . Env.config $ env
 
-routes :: App ()
-routes = do
+routes :: DT.Text -> App ()
+routes base = do
     middleware $ staticPolicy (noDots >-> addBase "static")
     middleware $ cors $ const $ Just simpleCorsResourcePolicy
         { corsRequestHeaders = "Authorization":simpleHeaders
@@ -62,7 +64,7 @@ routes = do
         }
     options (regex ".*") $ return ()
     pages
-    postData
+    blog base
     api
     get "/api/health" $ json True
 
@@ -130,9 +132,9 @@ pages = do
                 status NT.notFound404
                 showPage $ Pages.notFound "Unknown post id"
 
-postData :: App ()
-postData = do
-    get "/data/images/:postId/:fileName" $ do
+blog :: DT.Text -> App ()
+blog base = do
+    get (capture . DT.unpack $ base <> "/:postId/:fileName") $ do
         Auth.requireNoRedirect
         pid <- pathParam "postId"
         fn <- pathParam "fileName"

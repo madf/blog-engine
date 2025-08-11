@@ -1,5 +1,6 @@
 module Madf.Blog.Config
     ( Config (..)
+    , MainConfig (..)
     , DBConfig (..)
     , ImagesConfig (..)
     , AdminConfig (..)
@@ -16,10 +17,16 @@ import qualified Madf.Blog.JWT as JWT
 import Madf.Blog.Utils
 
 data Config = Config
-    { db     :: !DBConfig
+    { main   :: !MainConfig
+    , db     :: !DBConfig
     , images :: !ImagesConfig
     , admin  :: !AdminConfig
     , jwt    :: !JWT.Config
+    } deriving (Show)
+
+data MainConfig = MainConfig
+    { destDir :: !Text
+    , urlBase :: !Text
     } deriving (Show)
 
 newtype DBConfig = DBConfig
@@ -27,11 +34,9 @@ newtype DBConfig = DBConfig
     } deriving (Show)
 
 data ImagesConfig = ImagesConfig
-    { storageDir    :: !Text
-    , previewHeight :: !Int
+    { previewHeight :: !Int
     , jpegQuality   :: !Int
     , previewPrefix :: !Text
-    , urlBase       :: !Text
     } deriving (Show)
 
 data AdminConfig = AdminConfig
@@ -49,26 +54,29 @@ defaultPasswordHash = PasswordHash "$argon2id$v=19$m=65536,t=2,p=1$OjYULa8hWb3zt
 
 defaultConfig :: Config
 defaultConfig = Config
+    (MainConfig "blog" "blog")
     (DBConfig "test.db")
-    (ImagesConfig "data/images" 300 100 "preview-" "/data/images")
+    (ImagesConfig 300 100 "preview-")
     (AdminConfig "admin" defaultPasswordHash)
     JWT.defaultConfig
 
 parser :: IniParser Config
 parser = do
+    mc <- section "main" $ do
+        dd <- pack <$> fieldOf "dest_dir" string
+        ub <- pack <$> fieldOf "url_base" string
+        return $ MainConfig dd ub
     dc <- section "database" $ do
         p <- pack <$> fieldOf "path" string
         return $ DBConfig p
     ic <- section "images" $ do
-        sd <- pack <$> fieldOf "storage_dir" string
         ph <- fieldOf "preview_height" number
         jq <- fieldOf "jpeg_quality" number
         pp <- pack <$> fieldOf "preview_prefix" string
-        ub <- pack <$> fieldOf "url_base" string
-        return $ ImagesConfig sd ph jq pp ub
+        return $ ImagesConfig ph jq pp
     ac <- section "admin" $ do
         l <- pack <$> fieldOf "login" string
         ph <- PasswordHash . pack <$> fieldOf "password_hash" string
         return $ AdminConfig l ph
     jc <- section "jwt" JWT.parser
-    return $ Config dc ic ac jc
+    return $ Config mc dc ic ac jc

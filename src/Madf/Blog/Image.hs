@@ -271,11 +271,11 @@ upload conn conf pid (_, fi) = do
         checkPId = Prelude.any fromOnly <$> query conn "SELECT EXISTS (SELECT 1 FROM posts WHERE id = ?)" (Only pid)
         fn = decodeUtf8 $ fileName fi
         pn = previewPrefix (images conf) <> fn
-        std = storageDir $ images conf
+        std = destDir $ main conf
         stp = std <> "/" <> toText pid
         sfn = stp <> "/" <> fn
         spn = stp <> "/" <> pn
-        uBase = urlBase (images conf) <> "/" <> toText pid
+        uBase = urlBase (main conf) <> "/" <> toText pid
         u = uBase <> "/" <> fn
         pu = uBase <> "/" <> pn
         width = CP.dynamicMap CP.imageWidth

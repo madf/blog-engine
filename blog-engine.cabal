@@ -139,7 +139,7 @@ test-suite blog-engine-test
     , JuicyPixels-extra
     , aeson
     , base
-    , blog
+    , blog-engine
     , bytestring
     , config-ini
     , directory

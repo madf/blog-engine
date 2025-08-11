@@ -87,7 +87,7 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - base
-    - blog
+    - blog-engine
     - hspec
     - hspec-wai
     - hspec-wai-json
