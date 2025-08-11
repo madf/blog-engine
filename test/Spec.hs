@@ -2,18 +2,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import Lib (app)
+import Madf.Blog (routes)
+import qualified Madf.Blog.Env as Env
+import qualified Madf.Blog.Config as Config
+import qualified Web.Scotty.Trans as WST
 import Test.Hspec
 import Test.Hspec.Wai
 
 main :: IO ()
-main = hspec spec
+main = do
+    env <- Env.defaultEnv
+    hspec (spec env)
 
-spec :: Spec
-spec = with (return app) $ do
-    describe "GET /users" $ do
+spec :: Env.Env -> Spec
+spec env = with app $ do
+    describe "GET /api/health" $ do
         it "responds with 200" $ do
-            get "/users" `shouldRespondWith` 200
-        it "responds with [User]" $ do
-            let users = "[{\"userId\":1,\"userFirstName\":\"Isaac\",\"userLastName\":\"Newton\"},{\"userId\":2,\"userFirstName\":\"Albert\",\"userLastName\":\"Einstein\"}]"
-            get "/users" `shouldRespondWith` users
+            get "/api/health" `shouldRespondWith` 200
+        it "responds with true" $ do
+            get "/api/health" `shouldRespondWith` "true"
+    where
+        base = Config.urlBase . Config.main . Env.config $ env
+        app = WST.scottyAppT WST.defaultOptions (Env.runIO env) (routes base)
