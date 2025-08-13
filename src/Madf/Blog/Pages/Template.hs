@@ -1,21 +1,29 @@
 module Madf.Blog.Pages.Template
-    ( template
+    ( admin
+    , public
     ) where
 
 import Data.Text
 import Lucid
 
-template :: Text -> Html () -> Html ()
-template y b = doctypehtml_ $ do
+admin :: Text -> Html () -> Html ()
+admin = template "Madf's blog - Administrative interface"
+
+public :: Text -> Html () -> Html ()
+public = template "Madf's blog"
+
+template :: Text -> Text -> Html () -> Html ()
+template t y b = doctypehtml_ $ do
     head_ $ do
-        title_ "Madf's blog - Administrative interface"
+        title_ (toHtml t)
         link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/styles.css"]
+        link_ [rel_ "icon", type_ "image/x-icon", href_ "/favicon.png"]
         meta_ [charset_ "UTF-8"]
         meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1.0"]
     body_ $ do
         with div_ [class_ "container"] $ do
             header_ $ do
-                h1_ "Madf's blog - Administrative interface"
+                h1_ (toHtml t)
                 hr_ []
             main_ b
             footer_ $ do

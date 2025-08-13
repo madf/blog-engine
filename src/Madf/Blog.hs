@@ -17,6 +17,7 @@ import Web.Scotty.Cookie
 import qualified Network.HTTP.Types as NT
 import Network.Wai.Middleware.Static
 import Network.Wai.Middleware.Cors
+import Network.Wai.Middleware.RequestLogger
 import qualified Madf.Blog.Post.Storage as PostStorage
 import qualified Madf.Blog.Post.View as PostView
 import qualified Madf.Blog.Image as Image
@@ -27,7 +28,7 @@ import qualified Madf.Blog.Pages as Pages
 import qualified Madf.Blog.Pages.Edit as Pages
 import qualified Madf.Blog.Pages.Preview as Pages
 import qualified Madf.Blog.Pages.Login as Pages
-import qualified Madf.Blog.Pages.Template as Pages
+import qualified Madf.Blog.Pages.Template as Template
 import qualified Madf.Blog.DB as DB
 import qualified Madf.Blog.JWT as JWT
 import qualified Madf.Blog.Login as Login
@@ -59,6 +60,7 @@ serve env = do
 
 routes :: DT.Text -> App ()
 routes base = do
+    middleware $ logStdoutDev
     middleware $ staticPolicy (noDots >-> addBase "static")
     middleware $ cors $ const $ Just simpleCorsResourcePolicy
         { corsRequestHeaders = "Authorization":simpleHeaders
@@ -78,7 +80,7 @@ lucid h = do
 showPage :: Html () -> Action ()
 showPage p = do
     cy <- liftIO currentYear
-    lucid $ Pages.template cy p
+    lucid $ Template.admin cy p
 
 jsonError :: DT.Text -> Action ()
 jsonError = json
@@ -136,16 +138,25 @@ pages = do
 
 blog :: DT.Text -> App ()
 blog base = do
-    get (capture . DT.unpack $ base <> "/:postId/:fileName") $ do
-        Auth.requireNoRedirect
+    get (capture . DT.unpack $ "/" <> base <> "/:year/:fileName") $ do
+        year <- pathParam "year"
+        fn <- pathParam "fileName"
+        conf <- askConfig
+        let dd = destDir (main conf)
+        setHeader "Content-Type" "text/html"
+        file (DT.unpack $ dd <> "/" <> year <> "/" <> fn)
+    get (capture . DT.unpack $ "/" <> base <> "/:year/:postId/:fileName") $ do
+        year <- pathParam "year"
         pid <- pathParam "postId"
         fn <- pathParam "fileName"
         mi <- withConn $ \conn -> Image.getByFileName conn pid fn
+        conf <- askConfig
+        let dd = destDir (main conf)
         case mi of
             Nothing -> status NT.notFound404
             Just img -> do
                 setHeader "Content-Type" (DTL.fromStrict $ Image.imageMIMEType img)
-                file (DT.unpack $ "data/images/" <> toText pid <> "/" <> fn)
+                file (DT.unpack $ dd <> "/" <> year <> "/" <> toText pid <> "/" <> fn)
 
 api :: App ()
 api = do
