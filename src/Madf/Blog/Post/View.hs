@@ -97,7 +97,7 @@ get conn pid = do
         Nothing -> return Nothing
 
 update :: Connection -> PostId -> Text -> [Block] -> Storage.Type -> Bool -> IO ()
-update conn pid t bs ty = Storage.update conn pid t (toStorageBlocks bs) ty
+update conn pid t bs = Storage.update conn pid t (toStorageBlocks bs)
 
 list :: Connection -> Int -> Int -> IO [Post]
 list conn page perPage = do

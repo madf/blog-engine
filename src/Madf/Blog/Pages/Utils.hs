@@ -25,7 +25,7 @@ drawSelect title name options value = do
         mapM_ (drawOption value) options
 
 drawOption :: Maybe Text -> Option -> Html ()
-drawOption v o = let attrs = (value_ $ optValue o) : (Prelude.map snd . Prelude.filter (`fst` o) $ flags)
+drawOption v o = let attrs = value_ (optValue o) : (Prelude.map snd . Prelude.filter (`fst` o) $ flags)
                  in with option_ attrs (toHtml $ optName o)
     where
         flags =

@@ -29,6 +29,6 @@ editPage p = do
             with label_ [for_ "is_draft"] "Draft:"
             if Post.postIsDraft p then input_ [name_ "is_draft", id_ "is_draft", type_ "checkbox", checked_]
                                   else input_ [name_ "is_draft", id_ "is_draft", type_ "checkbox"]
-            with a_ [id_ "preview-button", class_ "link-btn btn-secondary m-l-auto", href_ ("/admin/preview/" <> (toText $ Post.postId p))] "Preview"
+            with a_ [id_ "preview-button", class_ "link-btn btn-secondary m-l-auto", href_ ("/admin/preview/" <> toText (Post.postId p))] "Preview"
             with button_ [id_ "save-button", class_ "btn btn-primary", type_ "button"] "Save"
     with (script_ "") [src_ "/js/edit.js"]
