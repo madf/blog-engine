@@ -21,6 +21,7 @@ data Post = Post
     , postUpdated :: !(Maybe UTCTime)
     , postTitle   :: !Text
     , postContent :: ![Block]
+    , postType    :: !Storage.Type
     , postIsDraft :: !Bool
     } deriving (Show)
 
@@ -73,6 +74,7 @@ instance ToJSON Post
             <> "updated"  .= postUpdated v
             <> "title"    .= postTitle v
             <> "content"  .= postContent v
+            <> "type"     .= postType v
             <> "is_draft" .= postIsDraft v
             )
 
@@ -84,6 +86,7 @@ instance FromJSON Post
             <*> o .: "updated"
             <*> o .: "title"
             <*> o .: "content"
+            <*> o .: "type"
             <*> o .: "is_draft"
 
 get :: Connection -> PostId -> IO (Maybe Post)
@@ -93,8 +96,8 @@ get conn pid = do
         Just p -> Just <$> fromStoragePost conn p
         Nothing -> return Nothing
 
-update :: Connection -> PostId -> Text -> [Block] -> Bool -> IO ()
-update conn pid t bs = Storage.update conn pid t (toStorageBlocks bs)
+update :: Connection -> PostId -> Text -> [Block] -> Storage.Type -> Bool -> IO ()
+update conn pid t bs ty = Storage.update conn pid t (toStorageBlocks bs) ty
 
 list :: Connection -> Int -> Int -> IO [Post]
 list conn page perPage = do
@@ -118,4 +121,4 @@ fromStorageBlock conn (Storage.CarouselBlock iids) = CarouselBlock <$> Image.get
 fromStoragePost :: Connection -> Storage.Post -> IO Post
 fromStoragePost conn p = do
     bs <- fromStorageBlocks conn (Storage.postContent p)
-    return $ Post (Storage.postId p) (Storage.postCreated p) (Storage.postUpdated p) (Storage.postTitle p) bs (Storage.postIsDraft p)
+    return $ Post (Storage.postId p) (Storage.postCreated p) (Storage.postUpdated p) (Storage.postTitle p) bs (Storage.postType p) (Storage.postIsDraft p)

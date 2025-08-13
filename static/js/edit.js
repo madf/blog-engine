@@ -487,6 +487,8 @@ const savePost = async () => {
     const formData = new FormData();
     formData.append('title', document.getElementById('title').value);
     formData.append('content', JSON.stringify(post.content));
+    formData.append('type', document.getElementById('type').value);
+    formData.append('reason', document.getElementById('reason').value);
     formData.append('draft', document.getElementById('is_draft').checked);
 
     const response = await fetch(`/admin/api/post/${post.id}`, {
@@ -505,6 +507,15 @@ const savePost = async () => {
   }
 };
 
+const toggleReson = t => {
+  const r = document.getElementById('reason');
+  switch (t) {
+    case 'public': r.disabled = true; break;
+    case 'unknown': r.disabled = true; break;
+    default: r.disabled = false; break;
+  }
+}
+
 const onLoad = () => {
   post = extractPost();
   renderBlocks();
@@ -514,6 +525,8 @@ const atbb = document.getElementById('add-text-block-button');
 atbb.addEventListener('click', e => { addTextBlock(); renderBlocks(); });
 const acbb = document.getElementById('add-carousel-block-button');
 acbb.addEventListener('click', e => { addCarouselBlock(); renderBlocks(); });
+const ts = document.getElementById('type');
+ts.addEventListener('change', e => { toggleReson(e.target.value); });
 const sb = document.getElementById('save-button');
 sb.addEventListener('click', e => { savePost(); });
 window.addEventListener('load', e => { onLoad(); });

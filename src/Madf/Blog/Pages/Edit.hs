@@ -7,6 +7,8 @@ import Data.ByteString.Lazy (toStrict)
 import Data.Aeson (encode)
 import Lucid
 import qualified Madf.Blog.Post.View as Post
+import Madf.Blog.Pages.PostType
+import Madf.Blog.Ids
 import Madf.Blog.Utils
 
 editPage :: Post.Post -> Html ()
@@ -22,9 +24,11 @@ editPage p = do
             with div_ [class_ "add-buttons"] $ do
                 with button_ [id_ "add-text-block-button", class_ "btn btn-primary", type_ "button"] "Add paragraph"
                 with button_ [id_ "add-carousel-block-button", class_ "btn btn-primary", type_ "button"] "Add carousel"
-        with div_ [class_ "save-section"] $ do
+        with div_ [class_ "post-form-footer"] $ do
+            drawPostTypeField (Post.postType p)
             with label_ [for_ "is_draft"] "Draft:"
-            if Post.postIsDraft p then input_ [name_ "id_draft", id_ "is_draft", type_ "checkbox", checked_]
-                                  else input_ [name_ "id_draft", id_ "is_draft", type_ "checkbox"]
+            if Post.postIsDraft p then input_ [name_ "is_draft", id_ "is_draft", type_ "checkbox", checked_]
+                                  else input_ [name_ "is_draft", id_ "is_draft", type_ "checkbox"]
+            with a_ [id_ "preview-button", class_ "link-btn btn-secondary m-l-auto", href_ ("/admin/preview/" <> (toText $ Post.postId p))] "Preview"
             with button_ [id_ "save-button", class_ "btn btn-primary", type_ "button"] "Save"
     with (script_ "") [src_ "/js/edit.js"]

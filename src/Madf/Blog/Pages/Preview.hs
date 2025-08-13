@@ -2,20 +2,23 @@ module Madf.Blog.Pages.Preview
     ( preview
     ) where
 
+import Control.Monad
 import Data.Text
 import Lucid
 import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Image as Image
+import Madf.Blog.Ids
 import Madf.Blog.Utils
 
-preview :: Post.Post -> Html ()
-preview p = do
+preview :: Bool -> Post.Post -> Html ()
+preview r p = do
     with div_ [class_ "post-header"] $ do
         with div_ [class_ "date-box"] $ do
             let (m, d) = splitDate (Post.postCreated p)
             span_ $ toHtml m
             span_ $ toHtml d
         h2_ $ toHtml (Post.postTitle p)
+        unless r $ with a_ [href_ ("/admin/edit/" <> toText (Post.postId p)), class_ "link-btn btn-secondary m-l-auto"] (span_ [class_ "icon"] "✎")
     hr_ []
     mapM_ renderBlock (Prelude.zip (Post.postContent p) [1..])
     div_ [class_ "post-footer"] $ do

@@ -3,6 +3,7 @@ module Madf.Blog.DB
     ) where
 
 import Control.Monad
+import Data.Maybe
 import qualified Data.Text as DT
 import Database.SQLite.Simple
 
@@ -12,6 +13,21 @@ check conn = do
     unless ("info" `elem` ts) (createInfoTable conn)
     unless ("posts" `elem` ts) (createPostsTable conn)
     unless ("images" `elem` ts) (createImagesTable conn)
+    msv <- fmap fromOnly . listToMaybe <$> query_ conn "SELECT schema_version FROM info"
+    case msv of
+        Nothing -> error "Cannot query database schema version."
+        Just sv -> performUpdates conn sv
+
+performUpdates :: Connection -> Int -> IO ()
+performUpdates conn sv
+    | sv < 2    = updateToV2 conn
+    | otherwise = return ()
+
+updateToV2 :: Connection -> IO ()
+updateToV2 conn = withTransaction conn $ do
+    execute_ conn "ALTER TABLE posts ADD COLUMN type TEXT NOT NULL DEFAULT 'public'"
+    execute_ conn "ALTER TABLE posts ADD COLUMN reason TEXT NOT NULL DEFAULT ''"
+    execute_ conn "UPDATE info SET schema_version = 2"
 
 createInfoTable :: Connection -> IO ()
 createInfoTable conn = do

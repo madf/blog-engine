@@ -31,6 +31,10 @@ main {
   padding: 20px;
 }
 
+.m-l-auto {
+  margin-left: auto;
+}
+
 .container {
   width: 75%;
   height: 100%;
@@ -165,6 +169,21 @@ main {
     font-size: 14px;
     font-weight: 500;
     transition: all 0.2s;
+}
+
+.link-btn {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.icon {
+  font-size: 24px;
 }
 
 .btn-primary {
@@ -486,13 +505,14 @@ main {
   flex-grow: 0
 }
 
-.save-section {
+.post-form-footer {
     border-top: 1px solid #e5e7eb;
     padding: 20px;
     background: #f9fafb;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
 }
 
 .status {

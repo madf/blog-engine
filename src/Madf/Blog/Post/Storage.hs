@@ -1,6 +1,9 @@
 module Madf.Blog.Post.Storage
     ( Post (..)
+    , Type (..)
     , Block (..)
+    , makeType
+    , splitType
     , create
     , get
     , update
@@ -18,12 +21,50 @@ import Data.Aeson.Types
 import Database.SQLite.Simple
 import Madf.Blog.Ids
 
+data Type = Public | Unlisted !Text | Private !Text | Unknown !Text deriving (Show, Eq)
+
+typeName :: Type -> Text
+typeName = \case
+    Public     -> "public"
+    Unlisted _ -> "unlisted"
+    Private _  -> "private"
+    Unknown _  -> "unknown"
+
+splitType :: Type -> (Text, Text)
+splitType v = case v of
+    Public     -> (typeName v, mempty)
+    Unlisted r -> (typeName v, r)
+    Private r  -> (typeName v, r)
+    Unknown r  -> (typeName v, r)
+
+makeType :: Text -> Text -> Type
+makeType t r = case t of
+    "public"   -> Public
+    "unlisted" -> Unlisted r
+    "private"  -> Private r
+    _          -> Unknown r
+
+instance ToJSON Type
+    where
+        toJSON v = let (t, r) = splitType v
+                   in object [ "type" .= t, "reason" .= r ]
+        toEncoding v = let (t, r) = splitType v
+                       in pairs ( "type" .= t <> "reason" .= r )
+
+instance FromJSON Type
+    where
+        parseJSON = withObject "Madf.Blog.Post.Type.Storage" $ \o -> do
+            t <- o .: "type"
+            r <- o .: "reason"
+            return $ makeType t r
+
 data Post = Post
     { postId      :: !PostId
     , postCreated :: !UTCTime
     , postUpdated :: !(Maybe UTCTime)
     , postTitle   :: !Text
     , postContent :: ![Block]
+    , postType    :: !Type
     , postIsDraft :: !Bool
     } deriving (Show)
 
@@ -50,7 +91,7 @@ instance ToJSON Block
 
 instance FromJSON Block
     where
-        parseJSON = withObject "Madf.Blog.Block.Storage" $ \o -> do
+        parseJSON = withObject "Madf.Blog.Post.Block.Storage" $ \o -> do
             t <- o .: "type"
             c <- o .: "content"
             fromPieces t c
@@ -68,6 +109,7 @@ instance ToJSON Post
             , "updated"  .= postUpdated v
             , "title"    .= postTitle v
             , "content"  .= postContent v
+            , "type"     .= postType v
             , "is_draft" .= postIsDraft v
             ]
         toEncoding v = pairs
@@ -76,6 +118,7 @@ instance ToJSON Post
             <> "updated"  .= postUpdated v
             <> "title"    .= postTitle v
             <> "content"  .= postContent v
+            <> "type"     .= postType v
             <> "is_draft" .= postIsDraft v
             )
 
@@ -86,13 +129,14 @@ instance FromJSON Post
             <*> o .: "created"
             <*> o .: "updated"
             <*> o .: "title"
+            <*> o .: "type"
             <*> o .: "content"
             <*> o .: "is_draft"
 
 create :: Connection -> IO Post
 create conn = do
     now <- getCurrentTime
-    mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (title, content, is_draft, created, updated) VALUES ('', ?, ?, ?, ?) RETURNING id" ("[]" :: LBS.ByteString, True, now, now)
+    mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (title, content, type, reason, is_draft, created, updated) VALUES ('', ?, 'unlisted', '', ?, ?, ?) RETURNING id" ("[]" :: LBS.ByteString, True, now, now)
     case mpid of
         Nothing -> error "Cannot create post"
         Just pid -> do
@@ -102,12 +146,13 @@ create conn = do
                 Just p -> return p
 
 get :: Connection -> PostId -> IO (Maybe Post)
-get conn pid = fmap makePost . listToMaybe <$> query conn "SELECT id, created, updated, title, content, is_draft FROM posts WHERE id = ?" (Only pid)
+get conn pid = fmap makePost . listToMaybe <$> query conn "SELECT id, created, updated, title, content, type, reason, is_draft FROM posts WHERE id = ?" (Only pid)
 
-update :: Connection -> PostId -> Text -> [Block] -> Bool -> IO ()
-update conn pid t bs isd = do
+update :: Connection -> PostId -> Text -> [Block] -> Type -> Bool -> IO ()
+update conn pid ti bs ty isd = do
     now <- getCurrentTime
-    execute conn "UPDATE posts SET title = ?, content = ?, is_draft = ?, updated = ? WHERE id = ?" (t, content, isd, now, pid)
+    let (t, r) = splitType ty
+    execute conn "UPDATE posts SET title = ?, content = ?, type = ?, reason = ?, is_draft = ?, updated = ? WHERE id = ?" (ti, content, t, r, isd, now, pid)
     where
         content = encode bs
 
@@ -115,9 +160,9 @@ delete :: Connection -> PostId -> IO ()
 delete conn pid = execute conn "DELETE FROM posts WHERE id = ?" (Only pid)
 
 list :: Connection -> Int -> Int -> IO [Post]
-list conn page perPage = fmap makePost <$> query conn "SELECT id, created, updated, title, content, is_draft FROM posts LIMIT ? OFFSET ?" (perPage, page * perPage)
+list conn page perPage = fmap makePost <$> query conn "SELECT id, created, updated, title, content, type, reason, is_draft FROM posts LIMIT ? OFFSET ?" (perPage, page * perPage)
 
-makePost :: (PostId, UTCTime, Maybe UTCTime, Text, LBS.ByteString, Bool) -> Post
-makePost (pid, created, updated, t, c, isd) = Post pid created updated t (fromMaybe dataError $ decode c) isd
+makePost :: (PostId, UTCTime, Maybe UTCTime, Text, LBS.ByteString, Text, Text, Bool) -> Post
+makePost (pid, created, updated, t, c, ty, r, isd) = Post pid created updated t (fromMaybe dataError $ decode c) (makeType ty r) isd
     where
         dataError = [TextBlock "Data error", TextBlock (decodeUtf8 $ LBS.toStrict c)]

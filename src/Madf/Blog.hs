@@ -127,7 +127,7 @@ pages = do
         i <- pathParam "postId"
         mp <- withConn $ \conn -> PostView.get conn i
         case mp of
-            Just p -> showPage $ Pages.preview p
+            Just p -> showPage $ Pages.preview False p
             Nothing -> do
                 status NT.notFound404
                 showPage $ Pages.notFound "Unknown post id"
@@ -202,9 +202,11 @@ postAPI = do
         i <- pathParam "postId"
         t <- formParam "title"
         c <- formParam "content"
+        ty <- formParam "type"
+        r <- formParam "reason"
         d <- formParam "draft"
         case DA.eitherDecode c of
-            Right bs -> withConn $ \conn -> PostView.update conn i t bs d
+            Right bs -> withConn $ \conn -> PostView.update conn i t bs (PostStorage.makeType ty r) d
             Left m -> status NT.badRequest400 >> json m
     delete "/admin/api/post/:postId" $ do
         Auth.requireNoRedirect

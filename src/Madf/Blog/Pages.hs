@@ -8,6 +8,8 @@ import Data.Maybe
 import Lucid
 import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Image as Image
+import Madf.Blog.Ids
+import Madf.Blog.Utils
 
 mainPage :: [Post.Post] -> Html ()
 mainPage posts = do
@@ -16,8 +18,15 @@ mainPage posts = do
 
 renderExerpt :: Post.Post -> Html ()
 renderExerpt p = li_ $ do
-    h4_ (toHtml $ Post.postTitle p)
+    h4_ $ do
+        with a_ [href_ url] (toHtml $ Post.postTitle p)
+    div_ $ do
+        with a_ [href_ url] $ do
+            div_ $ small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p))
+            div_ $ small_ (toHtml $ "Updated: " <> maybe "never" timeToText (Post.postUpdated p))
     div_ (exerpt p)
+    where
+        url = "/admin/preview/" <> toText (Post.postId p)
 
 exerpt :: Post.Post -> Html ()
 exerpt p = exerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)

@@ -38,8 +38,10 @@ library
       Madf.Blog.Pages
       Madf.Blog.Pages.Edit
       Madf.Blog.Pages.Login
+      Madf.Blog.Pages.PostType
       Madf.Blog.Pages.Preview
       Madf.Blog.Pages.Template
+      Madf.Blog.Pages.Utils
       Madf.Blog.Post.Storage
       Madf.Blog.Post.View
       Madf.Blog.Utils
