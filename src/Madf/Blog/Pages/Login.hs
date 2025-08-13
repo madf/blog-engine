@@ -13,7 +13,7 @@ loginPage me = do
     with form_ [class_ "login-form", method_ "post"] $ do
         with div_ [class_ "form-row"] $ do
             with label_ [for_ "login"] "Login"
-            input_ [type_ "text", name_ "login", id_ "login"]
+            input_ [type_ "text", name_ "login", id_ "login", autofocus_]
         with div_ [class_ "form-row"] $ do
             with label_ [for_ "password"] "Password"
             input_ [type_ "password", name_ "password", id_ "password"]
