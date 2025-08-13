@@ -23,7 +23,6 @@ module Madf.Blog.Image
     ) where
 
 import GHC.Generics
-import Control.Monad
 import Data.Text
 import Data.Text.Encoding
 import Data.Time
@@ -257,44 +256,46 @@ createPreview jq dh pfp md img = do
 
 upload :: Connection -> Config -> PostId -> File BS.ByteString -> IO Image
 upload conn conf pid (_, fi) = do
-    pe <- checkPId
-    unless pe (error "Unknown post id")
-    checkCreateDir stp
-    let fh = contentHash fi
-    moimg <- findByHash conn pid fh
-    case moimg of
-        Just img -> do
-            updateRC conn (imageId img) (succ . imageRefCount $ img)
-            return img
-        Nothing -> doUpload fh
+    mc <- getCreated
+    case mc of
+        Nothing -> error "Unknown post id"
+        Just created -> do
+            let fh = contentHash fi
+            moimg <- findByHash conn pid fh
+            case moimg of
+                Just img -> do
+                    updateRC conn (imageId img) (succ . imageRefCount $ img)
+                    return img
+                Nothing -> doUpload fh created
     where
-        checkPId = Prelude.any fromOnly <$> query conn "SELECT EXISTS (SELECT 1 FROM posts WHERE id = ?)" (Only pid)
+        getCreated = fmap fromOnly . listToMaybe <$> query conn "SELECT created FROM posts WHERE id = ?" (Only pid)
         fn = decodeUtf8 $ fileName fi
         pn = previewPrefix (images conf) <> fn
-        std = destDir $ main conf
-        stp = std <> "/" <> toText pid
-        sfn = stp <> "/" <> fn
-        spn = stp <> "/" <> pn
-        uBase = urlBase (main conf) <> "/" <> toText pid
-        u = uBase <> "/" <> fn
-        pu = uBase <> "/" <> pn
         width = CP.dynamicMap CP.imageWidth
         height = CP.dynamicMap CP.imageHeight
         dph = previewHeight $ images conf
         jq = jpegQuality $ images conf
         mime = decodeUtf8 $ fileContentType fi
-        cleanup m = do
+        cleanup sfn spn m = do
             removeFiles sfn spn
             error (unpack m)
-        doUpload fh = do
+        doUpload fh created = do
+            let std = destDir (main conf) <> timeYear created
+            let stp = std <> "/" <> toText pid
+            checkCreateDir stp
+            let sfn = stp <> "/" <> fn
+            let spn = stp <> "/" <> pn
             (md, img) <- prepareImage sfn fi
             (pw, ph) <- createPreview jq dph spn md img
             fs <- getSize sfn
             ps <- getSize spn
             now <- getCurrentTime
+            let uBase = urlBase (main conf) <> "/" <> timeYear created <> "/" <> toText pid
+            let u = uBase <> "/" <> fn
+            let pu = uBase <> "/" <> pn
             ri <- createImage conn (ImageInfo pid "" fn fs fh (width img) (height img) mime u pn ps pw ph pu now Nothing 1)
             case ri of
-                Left e -> cleanup e
+                Left e -> cleanup sfn spn e
                 Right i -> return i
 
 createImage :: Connection -> ImageInfo -> IO (Either Text Image)
