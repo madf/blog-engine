@@ -3,6 +3,7 @@ module Madf.Blog
     , routes
     ) where
 
+import Control.Monad
 import qualified Data.Text as DT
 import qualified Data.Text.Lazy as DTL
 import Data.Text.Encoding
@@ -31,6 +32,7 @@ import qualified Madf.Blog.DB as DB
 import qualified Madf.Blog.JWT as JWT
 import qualified Madf.Blog.Login as Login
 import qualified Madf.Blog.Auth as Auth
+import Madf.Blog.Publish
 import Madf.Blog.Utils
 import Lucid
 
@@ -96,7 +98,7 @@ pages = do
         f <- queryParamMaybe "from"
         l <- formParam "login"
         p <- formParam "password"
-        conf <- lift $ asks Env.config
+        conf <- askConfig
         if Login.verify (admin conf) l p
             then do
                 jwtEnv <- lift $ asks Env.jwt
@@ -156,7 +158,7 @@ loginAPI = do
     post "/admin/api/token/issue" $ do
         l <- formParam "login"
         p <- formParam "password"
-        conf <- lift $ asks Env.config
+        conf <- askConfig
         if Login.verify (admin conf) l p then do
             jwtEnv <- lift $ asks Env.jwt
             t <- liftIO $ JWT.issue jwtEnv
@@ -205,8 +207,11 @@ postAPI = do
         ty <- formParam "type"
         r <- formParam "reason"
         d <- formParam "draft"
+        conf <- askConfig
         case DA.eitherDecode c of
-            Right bs -> withConn $ \conn -> PostView.update conn i t bs (PostStorage.makeType ty r) d
+            Right bs -> withConn $ \conn -> do
+                PostView.update conn i t bs (PostStorage.makeType ty r) d
+                unless d (liftIO $ publish conn conf i)
             Left m -> status NT.badRequest400 >> json m
     delete "/admin/api/post/:postId" $ do
         Auth.requireNoRedirect

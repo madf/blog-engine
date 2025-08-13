@@ -4,6 +4,7 @@ module Madf.Blog.Utils
     ( timeToText
     , splitDate
     , currentYear
+    , timeYear
     , mapLeft
     , contentHash
     , fileHash
@@ -19,6 +20,9 @@ import Network.Wai.Parse (FileInfo (..))
 
 currentYear :: IO Text
 currentYear = ft "%Y" <$> getCurrentTime
+
+timeYear :: UTCTime -> Text
+timeYear = ft "%Y"
 
 timeToText :: UTCTime -> Text
 timeToText = ft "%F %T"

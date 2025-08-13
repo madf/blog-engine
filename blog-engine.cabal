@@ -44,6 +44,7 @@ library
       Madf.Blog.Pages.Utils
       Madf.Blog.Post.Storage
       Madf.Blog.Post.View
+      Madf.Blog.Publish
       Madf.Blog.Utils
   other-modules:
       Paths_blog_engine
