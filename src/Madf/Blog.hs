@@ -60,7 +60,7 @@ serve env = do
 
 routes :: DT.Text -> App ()
 routes base = do
-    middleware $ logStdoutDev
+    middleware logStdoutDev
     middleware $ staticPolicy (noDots >-> addBase "static")
     middleware $ cors $ const $ Just simpleCorsResourcePolicy
         { corsRequestHeaders = "Authorization":simpleHeaders
