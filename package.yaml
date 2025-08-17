@@ -46,6 +46,7 @@ dependencies:
 - hashable
 - jose
 - lens
+- crypton
 
 ghc-options:
 - -Wall

@@ -8,7 +8,7 @@ import Data.Maybe
 import Lucid
 import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Image as Image
-import Madf.Blog.Ids
+import qualified Madf.Blog.Slug as Slug
 import Madf.Blog.Utils
 
 mainPage :: [Post.Post] -> Html ()
@@ -26,7 +26,7 @@ renderExerpt p = li_ $ do
             div_ $ small_ (toHtml $ "Updated: " <> maybe "never" timeToText (Post.postUpdated p))
     div_ (exerpt p)
     where
-        url = "/admin/preview/" <> toText (Post.postId p)
+        url = "/admin/preview/" <> Slug.unSlug (Post.postSlug p)
 
 exerpt :: Post.Post -> Html ()
 exerpt p = exerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)

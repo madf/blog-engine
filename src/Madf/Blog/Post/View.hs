@@ -14,9 +14,11 @@ import Database.SQLite.Simple
 import Madf.Blog.Ids
 import qualified Madf.Blog.Post.Storage as Storage
 import qualified Madf.Blog.Image as Image
+import qualified Madf.Blog.Slug as Slug
 
 data Post = Post
     { postId      :: !PostId
+    , postSlug    :: !Slug.Type
     , postCreated :: !UTCTime
     , postUpdated :: !(Maybe UTCTime)
     , postTitle   :: !Text
@@ -62,6 +64,7 @@ instance ToJSON Post
     where
         toJSON v = object
             [ "id"       .= postId v
+            , "slug"     .= postSlug v
             , "created"  .= postCreated v
             , "updated"  .= postUpdated v
             , "title"    .= postTitle v
@@ -70,6 +73,7 @@ instance ToJSON Post
             ]
         toEncoding v = pairs
             (  "id"       .= postId v
+            <> "slug"     .= postSlug v
             <> "created"  .= postCreated v
             <> "updated"  .= postUpdated v
             <> "title"    .= postTitle v
@@ -82,6 +86,7 @@ instance FromJSON Post
     where
         parseJSON = withObject "Madf.Blog.Post.View" $ \o -> Post
             <$> o .: "id"
+            <*> o .: "slug"
             <*> o .: "created"
             <*> o .: "updated"
             <*> o .: "title"
@@ -89,15 +94,15 @@ instance FromJSON Post
             <*> o .: "type"
             <*> o .: "is_draft"
 
-get :: Connection -> PostId -> IO (Maybe Post)
-get conn pid = do
-    mp <- Storage.get conn pid
+get :: Connection -> Slug.Type -> IO (Maybe Post)
+get conn slug = do
+    mp <- Storage.get conn slug
     case mp of
         Just p -> Just <$> fromStoragePost conn p
         Nothing -> return Nothing
 
-update :: Connection -> PostId -> Text -> [Block] -> Storage.Type -> Bool -> IO ()
-update conn pid t bs = Storage.update conn pid t (toStorageBlocks bs)
+update :: Connection -> Slug.Type -> Text -> [Block] -> Storage.Type -> Bool -> IO ()
+update conn slug t bs = Storage.update conn slug t (toStorageBlocks bs)
 
 list :: Connection -> Int -> Int -> IO [Post]
 list conn page perPage = do
@@ -121,4 +126,4 @@ fromStorageBlock conn (Storage.CarouselBlock iids) = CarouselBlock <$> Image.get
 fromStoragePost :: Connection -> Storage.Post -> IO Post
 fromStoragePost conn p = do
     bs <- fromStorageBlocks conn (Storage.postContent p)
-    return $ Post (Storage.postId p) (Storage.postCreated p) (Storage.postUpdated p) (Storage.postTitle p) bs (Storage.postType p) (Storage.postIsDraft p)
+    return $ Post (Storage.postId p) (Storage.postSlug p) (Storage.postCreated p) (Storage.postUpdated p) (Storage.postTitle p) bs (Storage.postType p) (Storage.postIsDraft p)

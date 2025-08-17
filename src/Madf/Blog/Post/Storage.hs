@@ -7,7 +7,6 @@ module Madf.Blog.Post.Storage
     , create
     , get
     , update
-    , delete
     , list
     ) where
 
@@ -19,6 +18,7 @@ import Data.Maybe
 import Data.Aeson
 import Data.Aeson.Types
 import Database.SQLite.Simple
+import qualified Madf.Blog.Slug as Slug
 import Madf.Blog.Ids
 
 data Type = Public | Unlisted !Text | Private !Text | Unknown !Text deriving (Show, Eq)
@@ -60,6 +60,7 @@ instance FromJSON Type
 
 data Post = Post
     { postId      :: !PostId
+    , postSlug    :: !Slug.Type
     , postCreated :: !UTCTime
     , postUpdated :: !(Maybe UTCTime)
     , postTitle   :: !Text
@@ -105,6 +106,7 @@ instance ToJSON Post
     where
         toJSON v = object
             [ "id"       .= postId v
+            , "slug"     .= postSlug v
             , "created"  .= postCreated v
             , "updated"  .= postUpdated v
             , "title"    .= postTitle v
@@ -114,6 +116,7 @@ instance ToJSON Post
             ]
         toEncoding v = pairs
             (  "id"       .= postId v
+            <> "slug"     .= postSlug v
             <> "created"  .= postCreated v
             <> "updated"  .= postUpdated v
             <> "title"    .= postTitle v
@@ -126,6 +129,7 @@ instance FromJSON Post
     where
         parseJSON = withObject "Madf.Blog.Post.Storage" $ \o -> Post
             <$> o .: "id"
+            <*> o .: "slug"
             <*> o .: "created"
             <*> o .: "updated"
             <*> o .: "title"
@@ -136,33 +140,38 @@ instance FromJSON Post
 create :: Connection -> IO Post
 create conn = do
     now <- getCurrentTime
-    mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (title, content, type, reason, is_draft, created, updated) VALUES ('', ?, 'unlisted', '', ?, ?, ?) RETURNING id" ("[]" :: LBS.ByteString, True, now, now)
+    mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (slug, title, content, type, reason, is_draft, created, updated) VALUES (NULL, '', ?, 'unlisted', '', ?, ?, ?) RETURNING id" ("[]" :: LBS.ByteString, True, now, now)
     case mpid of
         Nothing -> error "Cannot create post"
         Just pid -> do
-            mp <- get conn pid
+            slug <- Slug.withId 8 pid
+            execute conn "UPDATE posts SET slug = ? WHERE id = ?" (slug, pid)
+            mp <- getById conn pid
             case mp of
                 Nothing -> error "Cannot create post"
                 Just p -> return p
 
-get :: Connection -> PostId -> IO (Maybe Post)
-get conn pid = fmap makePost . listToMaybe <$> query conn "SELECT id, created, updated, title, content, type, reason, is_draft FROM posts WHERE id = ?" (Only pid)
+selectBase :: Query
+selectBase = "SELECT id, slug, created, updated, title, content, type, reason, is_draft FROM posts"
 
-update :: Connection -> PostId -> Text -> [Block] -> Type -> Bool -> IO ()
-update conn pid ti bs ty isd = do
+get :: Connection -> Slug.Type -> IO (Maybe Post)
+get conn slug = fmap makePost . listToMaybe <$> query conn (selectBase <> " WHERE slug = ?") (Only slug)
+
+getById :: Connection -> PostId -> IO (Maybe Post)
+getById conn pid = fmap makePost . listToMaybe <$> query conn (selectBase <> " WHERE id = ?") (Only pid)
+
+update :: Connection -> Slug.Type -> Text -> [Block] -> Type -> Bool -> IO ()
+update conn slug ti bs ty isd = do
     now <- getCurrentTime
     let (t, r) = splitType ty
-    execute conn "UPDATE posts SET title = ?, content = ?, type = ?, reason = ?, is_draft = ?, updated = ? WHERE id = ?" (ti, content, t, r, isd, now, pid)
+    execute conn "UPDATE posts SET title = ?, content = ?, type = ?, reason = ?, is_draft = ?, updated = ? WHERE slug = ?" (ti, content, t, r, isd, now, slug)
     where
         content = encode bs
 
-delete :: Connection -> PostId -> IO ()
-delete conn pid = execute conn "DELETE FROM posts WHERE id = ?" (Only pid)
-
 list :: Connection -> Int -> Int -> IO [Post]
-list conn page perPage = fmap makePost <$> query conn "SELECT id, created, updated, title, content, type, reason, is_draft FROM posts LIMIT ? OFFSET ?" (perPage, page * perPage)
+list conn page perPage = fmap makePost <$> query conn (selectBase <> " ORDER BY created DESC LIMIT ? OFFSET ?") (perPage, page * perPage)
 
-makePost :: (PostId, UTCTime, Maybe UTCTime, Text, LBS.ByteString, Text, Text, Bool) -> Post
-makePost (pid, created, updated, t, c, ty, r, isd) = Post pid created updated t (fromMaybe dataError $ decode c) (makeType ty r) isd
+makePost :: (PostId, Slug.Type, UTCTime, Maybe UTCTime, Text, LBS.ByteString, Text, Text, Bool) -> Post
+makePost (pid, slug, created, updated, t, c, ty, r, isd) = Post pid slug created updated t (fromMaybe dataError $ decode c) (makeType ty r) isd
     where
         dataError = [TextBlock "Data error", TextBlock (decodeUtf8 $ LBS.toStrict c)]

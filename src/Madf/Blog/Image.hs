@@ -6,8 +6,6 @@ module Madf.Blog.Image
     , get
     , updateCaption
     , delete
-    , listByPost
-    , deleteByPost
     , getByFileName
     , imagePostId
     , imageCaption
@@ -40,6 +38,7 @@ import Madf.Blog.Ids
 import Madf.Blog.Config
 import Madf.Blog.Files
 import Madf.Blog.Utils
+import qualified Madf.Blog.Slug as Slug
 
 data ImageInfo = ImageInfo
     { imageInfoPostId          :: !PostId
@@ -196,8 +195,8 @@ getMultiple conn iids = withTransaction conn $ do
     execute_ conn "DROP TABLE temp.image_ids"
     return r
 
-getByFileName :: Connection -> PostId -> Text -> IO (Maybe Image)
-getByFileName conn pid fn = listToMaybe <$> query conn (selectBase <> " WHERE post_id = ? AND (file_name = ? OR preview_file_name = ?)") (pid, fn, fn)
+getByFileName :: Connection -> Slug.Type -> Text -> IO (Maybe Image)
+getByFileName conn slug fn = listToMaybe <$> query conn (selectBase <> " WHERE post_id = (SELECT id FROM posts WHERE slug = ?) AND (file_name = ? OR preview_file_name = ?)") (slug, fn, fn)
 
 updateCaption :: Connection -> ImageId -> Text -> IO Image
 updateCaption conn iid cap = do
@@ -228,15 +227,6 @@ delete conn iid = do
 updateRC :: Connection -> ImageId -> Int -> IO ()
 updateRC conn iid rc = execute conn "UPDATE images SET ref_count = ? WHERE id = ?" (rc, iid)
 
-listByPost :: Connection -> PostId -> IO [Image]
-listByPost conn pid = query conn (selectBase <> " WHERE post_id = ?") (Only pid)
-
-deleteByPost :: Connection -> PostId -> IO ()
-deleteByPost conn pid = do
-    fs <- query conn "SELECT file_name, preview_file_name FROM images WHERE post_id = ?" (Only pid)
-    mapM_ (uncurry removeFiles) fs
-    execute conn "DELETE FROM images WHERE post_id = ?" (Only pid)
-
 scaleToHeight :: Int -> CP.Image CP.PixelRGBA8 -> CP.Image CP.PixelRGBA8
 scaleToHeight dh img = CPE.scaleBilinear (w * dh `div` h) dh img
     where
@@ -254,21 +244,21 @@ createPreview jq dh pfp md img = do
             Just CP.SourcePng  -> CP.savePngImage (unpack pfp) simg
             v                  -> error $ "Unsupported image format: '" ++ show v ++ "'"
 
-upload :: Connection -> Config -> PostId -> File BS.ByteString -> IO Image
-upload conn conf pid (_, fi) = do
-    mc <- getCreated
-    case mc of
+upload :: Connection -> Config -> Slug.Type -> File BS.ByteString -> IO Image
+upload conn conf slug (_, fi) = do
+    mpi <- getPostInfo
+    case mpi of
         Nothing -> error "Unknown post id"
-        Just created -> do
+        Just (pid, created) -> do
             let fh = contentHash fi
             moimg <- findByHash conn pid fh
             case moimg of
                 Just img -> do
                     updateRC conn (imageId img) (succ . imageRefCount $ img)
                     return img
-                Nothing -> doUpload fh created
+                Nothing -> doUpload fh pid created
     where
-        getCreated = fmap fromOnly . listToMaybe <$> query conn "SELECT created FROM posts WHERE id = ?" (Only pid)
+        getPostInfo = listToMaybe <$> query conn "SELECT id, created FROM posts WHERE slug = ?" (Only slug)
         fn = decodeUtf8 $ fileName fi
         pn = previewPrefix (images conf) <> fn
         width = CP.dynamicMap CP.imageWidth
@@ -279,9 +269,9 @@ upload conn conf pid (_, fi) = do
         cleanup sfn spn m = do
             removeFiles sfn spn
             error (unpack m)
-        doUpload fh created = do
+        doUpload fh pid created = do
             let std = destDir (main conf) <> timeYear created
-            let stp = std <> "/" <> toText pid
+            let stp = std <> "/" <> Slug.unSlug slug
             checkCreateDir stp
             let sfn = stp <> "/" <> fn
             let spn = stp <> "/" <> pn
@@ -290,7 +280,7 @@ upload conn conf pid (_, fi) = do
             fs <- getSize sfn
             ps <- getSize spn
             now <- getCurrentTime
-            let uBase = urlBase (main conf) <> "/" <> timeYear created <> "/" <> toText pid
+            let uBase = urlBase (main conf) <> "/" <> timeYear created <> "/" <> Slug.unSlug slug
             let u = uBase <> "/" <> fn
             let pu = uBase <> "/" <> pn
             ri <- createImage conn (ImageInfo pid "" fn fs fh (width img) (height img) mime u pn ps pw ph pu now Nothing 1)

@@ -45,6 +45,7 @@ library
       Madf.Blog.Post.Storage
       Madf.Blog.Post.View
       Madf.Blog.Publish
+      Madf.Blog.Slug
       Madf.Blog.Utils
   other-modules:
       Paths_blog_engine
@@ -62,6 +63,7 @@ library
     , base >=4.7 && <5
     , bytestring
     , config-ini
+    , crypton
     , directory
     , hashable
     , http-types
@@ -103,6 +105,7 @@ executable blog-engine
     , blog-engine
     , bytestring
     , config-ini
+    , crypton
     , directory
     , hashable
     , http-types
@@ -145,6 +148,7 @@ test-suite blog-engine-test
     , blog-engine
     , bytestring
     , config-ini
+    , crypton
     , directory
     , hashable
     , hspec

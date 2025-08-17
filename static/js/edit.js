@@ -50,30 +50,6 @@ const updateTextContent = (idx, content) => {
   }
 }
 
-/*
-const handleImageUpload = (blockId, files) => {
-  const block = blocks.find(b => b.id === blockId);
-  if (!block || block.type !== 'carousel') return;
-
-  Array.from(files).forEach(file => {
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageId = Date.now() + Math.random();
-        block.images.push({
-            id: imageId,
-            url: e.target.result, // In real app, this would be from upload API
-            caption: '',
-            filename: file.name
-        });
-        renderBlocks();
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-}
-*/
-
 const handleImageUpload = async (blockIdx, files) => {
   const block = post.content[blockIdx];
   if (!block || block.type !== 'carousel') return;
@@ -98,7 +74,7 @@ const handleImageUpload = async (blockIdx, files) => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch(`/admin/api/post/${post.id}/image`, {
+      const response = await fetch(`/admin/api/post/${post.slug}/image`, {
         method: 'POST',
         body: formData,
         credentials: 'include' // Include session cookie
@@ -265,12 +241,6 @@ const createImageCaption = (blockIdx, img, idx) => {
 };
 
 const createImageControls = (blockIdx, img, idx) => {
-  /*
-    <div class="image-controls">
-      <small>${image.filename}</small>
-      <button class="btn btn-small btn-danger" onclick="deleteImage(${block.id}, ${image.id})">×</button>
-    </div>
-   */
   const ic = document.createElement('div');
   ic.className = 'image-controls';
   const fn = document.createElement('small');
@@ -284,20 +254,6 @@ const createImageControls = (blockIdx, img, idx) => {
 };
 
 const createImageUpload = blockIdx => {
-  /*
-    <div class="image-upload">
-      <label for="upload-${block.id}" class="upload-btn">
-        📁 Upload Images
-      </label>
-      <input
-        type="file"
-        id="upload-${block.id}"
-        multiple
-        accept="image/*"
-        onchange="handleImageUpload(${block.id}, this.files)"
-      >
-    </div>
-   */
   const iu = document.createElement('div');
   iu.className = 'image-upload';
   iu.innerHTML = `<label for="upload-${blockIdx}" class="upload-btn">📁 Upload Images</label>`;
@@ -356,7 +312,7 @@ const createCarouselBlock = (block, idx) => {
   return blk;
 };
 
-function renderBlocks() {
+const renderBlocks = () => {
   const container = document.getElementById('blocksContainer');
 
   if (post.content.length === 0) {
@@ -377,108 +333,6 @@ function renderBlocks() {
       container.appendChild(createCarouselBlock(block, idx));
     }
   });
-
-  /*
-  container.innerHTML = blocks.map((block, index) => {
-    if (block.type === 'text') {
-      return `
-        <div class="block">
-          <div class="block-header">
-            <span class="block-type">Text Block #${index + 1}</span>
-            <div class="block-controls">
-              <button class="btn btn-small btn-secondary" onclick="moveBlockUp(${block.id})" ${index === 0 ? 'disabled' : ''}>↑</button>
-              <button class="btn btn-small btn-secondary" onclick="moveBlockDown(${block.id})" ${index === blocks.length - 1 ? 'disabled' : ''}>↓</button>
-              <button class="btn btn-small btn-danger" onclick="deleteBlock(${block.id})">Delete</button>
-            </div>
-          </div>
-          <div class="block-content">
-            <div class="text-block">
-              <textarea
-                placeholder="Enter your text here..."
-                oninput="updateTextContent(${block.id}, this.value)"
-              >${block.content}</textarea>
-            </div>
-          </div>
-        </div>
-      `;
-    } else if (block.type === 'carousel') {
-      return `
-        <div class="block">
-          <div class="block-header">
-            <span class="block-type">Carousel Block #${index + 1}</span>
-            <div class="block-controls">
-              <button class="btn btn-small btn-secondary" onclick="moveBlockUp(${block.id})" ${index === 0 ? 'disabled' : ''}>↑</button>
-              <button class="btn btn-small btn-secondary" onclick="moveBlockDown(${block.id})" ${index === blocks.length - 1 ? 'disabled' : ''}>↓</button>
-              <button class="btn btn-small btn-danger" onclick="deleteBlock(${block.id})">Delete</button>
-            </div>
-          </div>
-          <div class="block-content">
-            <div class="carousel-block">
-              <div class="image-upload">
-                <label for="upload-${block.id}" class="upload-btn">
-                  📁 Upload Images
-                </label>
-                <input
-                  type="file"
-                  id="upload-${block.id}"
-                  multiple
-                  accept="image/*"
-                  onchange="handleImageUpload(${block.id}, this.files)"
-                >
-              </div>
-              ${block.images.length > 0 ? `
-                <div class="images-grid">
-                  ${block.images.map(image => `
-                    <div class="image-item">
-                      <img src="${image.url}" alt="${image.caption}" class="image-preview">
-                      <div class="image-caption">
-                        <input
-                          type="text"
-                          placeholder="Image caption..."
-                          value="${image.caption}"
-                          oninput="updateImageCaption(${block.id}, ${image.id}, this.value)"
-                        >
-                      </div>
-                      <div class="image-controls">
-                        <small>${image.filename}</small>
-                        <button class="btn btn-small btn-danger" onclick="deleteImage(${block.id}, ${image.id})">×</button>
-                      </div>
-                    </div>
-                  `).join('')}
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        </div>
-      `;
-    }
-  }).join('');*/
-}
-
-function saveDraft() {
-  const postData = {
-    title: document.getElementById('postTitle').value,
-    blocks: post.content,
-    status: 'draft'
-  };
-
-  console.log('Saving draft:', postData);
-  document.getElementById('saveStatus').textContent = 'Draft saved at ' + new Date().toLocaleTimeString();
-
-  // In real app: fetch('/api/posts', { method: 'POST', body: JSON.stringify(postData) })
-}
-
-function publishPost() {
-  const postData = {
-    title: document.getElementById('postTitle').value,
-    blocks: post.content,
-    status: 'published'
-  };
-
-  console.log('Publishing post:', postData);
-  document.getElementById('saveStatus').textContent = 'Published at ' + new Date().toLocaleTimeString();
-
-  // In real app: fetch('/api/posts/publish', { method: 'POST', body: JSON.stringify(postData) })
 }
 
 const savePost = async () => {
@@ -491,7 +345,7 @@ const savePost = async () => {
     formData.append('reason', document.getElementById('reason').value);
     formData.append('draft', document.getElementById('is_draft').checked);
 
-    const response = await fetch(`/admin/api/post/${post.id}`, {
+    const response = await fetch(`/admin/api/post/${post.slug}`, {
       method: 'PUT',
       body: formData,
       credentials: 'include' // Include session cookie

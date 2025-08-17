@@ -8,6 +8,7 @@ module Madf.Blog.Ids
     , toText
     , PostId
     , ImageId
+    , Id
     ) where
 
 import Data.Int (Int64)

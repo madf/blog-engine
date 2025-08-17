@@ -6,6 +6,8 @@ import Control.Monad
 import Data.Maybe
 import qualified Data.Text as DT
 import Database.SQLite.Simple
+import qualified Madf.Blog.Slug as Slug
+import Madf.Blog.Ids
 
 check :: Connection -> IO ()
 check conn = do
@@ -21,6 +23,7 @@ check conn = do
 performUpdates :: Connection -> Int -> IO ()
 performUpdates conn sv
     | sv < 2    = updateToV2 conn
+    | sv < 3    = updateToV3 conn
     | otherwise = return ()
 
 updateToV2 :: Connection -> IO ()
@@ -28,6 +31,19 @@ updateToV2 conn = withTransaction conn $ do
     execute_ conn "ALTER TABLE posts ADD COLUMN type TEXT NOT NULL DEFAULT 'public'"
     execute_ conn "ALTER TABLE posts ADD COLUMN reason TEXT NOT NULL DEFAULT ''"
     execute_ conn "UPDATE info SET schema_version = 2"
+
+updateToV3 :: Connection -> IO ()
+updateToV3 conn = withTransaction conn $ do
+    execute_ conn "ALTER TABLE posts ADD COLUMN slug TEXT DEFAULT NULL"
+    is <- fmap fromOnly <$> query_ conn "SELECT id FROM posts"
+    us <- mapM slugUpdate is
+    executeMany conn "UPDATE posts SET slug = ? WHERE id = ?" us
+    execute_ conn "UPDATE info SET schema_version = 2"
+    where
+        slugUpdate :: PostId -> IO (Slug.Type, PostId)
+        slugUpdate i = do
+            slug <- Slug.withId 8 i
+            return (slug, i)
 
 createInfoTable :: Connection -> IO ()
 createInfoTable conn = do
@@ -39,7 +55,7 @@ createInfoTable conn = do
 createPostsTable :: Connection -> IO ()
 createPostsTable conn = execute_ conn q
     where
-        q = "CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL, content BLOB NOT NULL, is_draft INT NOT NULL, created TEXT NOT NULL, updated TEXT) STRICT"
+        q = "CREATE TABLE posts (id INTEGER PRIMARY KEY, slug TEXT, title TEXT NOT NULL, content BLOB NOT NULL, type TEXT NOT NULL, reason TEXT NOT NULL, is_draft INT NOT NULL, created TEXT NOT NULL, updated TEXT) STRICT"
 
 createImagesTable :: Connection -> IO ()
 createImagesTable conn = execute_ conn q

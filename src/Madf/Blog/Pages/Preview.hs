@@ -7,7 +7,7 @@ import Data.Text
 import Lucid
 import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Image as Image
-import Madf.Blog.Ids
+import qualified Madf.Blog.Slug as Slug
 import Madf.Blog.Utils
 
 preview :: Bool -> Post.Post -> Html ()
@@ -18,7 +18,7 @@ preview r p = do
             span_ $ toHtml m
             span_ $ toHtml d
         h2_ $ toHtml (Post.postTitle p)
-        unless r $ with a_ [href_ ("/admin/edit/" <> toText (Post.postId p)), class_ "link-btn btn-secondary m-l-auto"] (span_ [class_ "icon"] "✎")
+        unless r $ with a_ [href_ ("/admin/edit/" <> Slug.unSlug (Post.postSlug p)), class_ "link-btn btn-secondary m-l-auto"] (span_ [class_ "icon"] "✎")
     hr_ []
     mapM_ renderBlock (Prelude.zip (Post.postContent p) [1..])
     div_ [class_ "post-footer"] $ do

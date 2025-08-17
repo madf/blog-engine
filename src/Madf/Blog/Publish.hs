@@ -8,14 +8,14 @@ import Lucid
 import Madf.Blog.Pages.Preview
 import Madf.Blog.Pages.Template
 import qualified Madf.Blog.Post.View as Post
+import qualified Madf.Blog.Slug as Slug
 import Madf.Blog.Config
-import Madf.Blog.Ids
 import Madf.Blog.Files
 import Madf.Blog.Utils
 
-publish :: Connection -> Config -> PostId -> IO ()
-publish conn conf i = do
-    mp <- Post.get conn i
+publish :: Connection -> Config -> Slug.Type -> IO ()
+publish conn conf slug = do
+    mp <- Post.get conn slug
     case mp of
         Nothing -> error "No such post"
         Just p -> do
@@ -33,7 +33,7 @@ publishPost dd p = do
     where
         year = timeYear (Post.postCreated p)
         pd = dd <> "/" <> year
-        fp = unpack (pd <> "/" <> toText (Post.postId p) <> ".html")
+        fp = unpack (pd <> "/" <> Slug.unSlug (Post.postSlug p) <> ".html")
 
 regenIndex :: Connection -> Text -> IO ()
 regenIndex = undefined

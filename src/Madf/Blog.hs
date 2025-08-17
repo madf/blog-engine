@@ -23,7 +23,6 @@ import qualified Madf.Blog.Post.View as PostView
 import qualified Madf.Blog.Image as Image
 import qualified Madf.Blog.Env as Env
 import Madf.Blog.Config
-import Madf.Blog.Ids
 import qualified Madf.Blog.Pages as Pages
 import qualified Madf.Blog.Pages.Edit as Pages
 import qualified Madf.Blog.Pages.Preview as Pages
@@ -33,6 +32,7 @@ import qualified Madf.Blog.DB as DB
 import qualified Madf.Blog.JWT as JWT
 import qualified Madf.Blog.Login as Login
 import qualified Madf.Blog.Auth as Auth
+import qualified Madf.Blog.Slug as Slug
 import Madf.Blog.Publish
 import Madf.Blog.Utils
 import Lucid
@@ -111,24 +111,19 @@ pages = do
     get    "/admin/new" $ do
         Auth.require
         r <- withConn $ \conn -> PostStorage.create conn
-        redirect $ "/admin/edit/" <> (DTL.fromStrict . toText . PostStorage.postId $ r)
-    get    "/admin/edit/:postId" $ do
+        redirect $ "/admin/edit/" <> (DTL.fromStrict . Slug.unSlug . PostStorage.postSlug $ r)
+    get    "/admin/edit/:postSlug" $ do
         Auth.require
-        i <- pathParam "postId"
+        i <- pathParam "postSlug"
         mp <- withConn $ \conn -> PostView.get conn i
         case mp of
             Just p -> showPage $ Pages.editPage p
             Nothing -> do
                 status NT.notFound404
                 showPage $ Pages.notFound "Unknown post id"
-    delete "/admin/edit/:postId" $ do
+    get    "/admin/preview/:postSlug" $ do
         Auth.require
-        pid <- pathParam "postId"
-        withConn (`PostStorage.delete` pid)
-        redirect "/admin"
-    get    "/admin/preview/:postId" $ do
-        Auth.require
-        i <- pathParam "postId"
+        i <- pathParam "postSlug"
         mp <- withConn $ \conn -> PostView.get conn i
         case mp of
             Just p -> showPage $ Pages.preview False p
@@ -145,18 +140,18 @@ blog base = do
         let dd = destDir (main conf)
         setHeader "Content-Type" "text/html"
         file (DT.unpack $ dd <> "/" <> year <> "/" <> fn)
-    get (capture . DT.unpack $ "/" <> base <> "/:year/:postId/:fileName") $ do
+    get (capture . DT.unpack $ "/" <> base <> "/:year/:postSlug/:fileName") $ do
         year <- pathParam "year"
-        pid <- pathParam "postId"
+        slug <- pathParam "postSlug"
         fn <- pathParam "fileName"
-        mi <- withConn $ \conn -> Image.getByFileName conn pid fn
+        mi <- withConn $ \conn -> Image.getByFileName conn slug fn
         conf <- askConfig
         let dd = destDir (main conf)
         case mi of
             Nothing -> status NT.notFound404
             Just img -> do
                 setHeader "Content-Type" (DTL.fromStrict $ Image.imageMIMEType img)
-                file (DT.unpack $ dd <> "/" <> year <> "/" <> toText pid <> "/" <> fn)
+                file (DT.unpack $ dd <> "/" <> year <> "/" <> Slug.unSlug slug <> "/" <> fn)
 
 api :: App ()
 api = do
@@ -205,14 +200,14 @@ imageAPI = do
 
 postAPI :: App ()
 postAPI = do
-    get    "/admin/api/post/:postId" $ do
+    get    "/admin/api/post/:postSlug" $ do
         Auth.requireNoRedirect
-        pid <- pathParam "postId"
-        r <- withConn $ \conn -> PostView.get conn pid
+        slug <- pathParam "postSlug"
+        r <- withConn $ \conn -> PostView.get conn slug
         json r
-    put    "/admin/api/post/:postId" $ do
+    put    "/admin/api/post/:postSlug" $ do
         Auth.requireNoRedirect
-        i <- pathParam "postId"
+        s <- pathParam "postSlug"
         t <- formParam "title"
         c <- formParam "content"
         ty <- formParam "type"
@@ -221,16 +216,12 @@ postAPI = do
         conf <- askConfig
         case DA.eitherDecode c of
             Right bs -> withConn $ \conn -> do
-                PostView.update conn i t bs (PostStorage.makeType ty r) d
-                unless d (liftIO $ publish conn conf i)
+                PostView.update conn s t bs (PostStorage.makeType ty r) d
+                unless d (liftIO $ publish conn conf s)
             Left m -> status NT.badRequest400 >> json m
-    delete "/admin/api/post/:postId" $ do
+    post   "/admin/api/post/:postSlug/image" $ do
         Auth.requireNoRedirect
-        pid <- pathParam "postId"
-        withConn $ \conn -> PostStorage.delete conn pid
-    post   "/admin/api/post/:postId/image" $ do
-        Auth.requireNoRedirect
-        i <- pathParam "postId"
+        i <- pathParam "postSlug"
         fs <- files
         conf <- askConfig
         r <- withConn $ \conn -> mapM (Image.upload conn conf i) fs
