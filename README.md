@@ -30,4 +30,4 @@ All paths are recomended but are configurable in `config.ini`. The path to the `
 
 ## Links
 
-[Design considerations](desing-considerations.md)
+[Design considerations](design-considerations.md)
