@@ -55,8 +55,8 @@ defaultPasswordHash = PasswordHash "$argon2id$v=19$m=65536,t=2,p=1$OjYULa8hWb3zt
 
 defaultConfig :: Config
 defaultConfig = Config
-    (MainConfig "blog" "blog" 10)
-    (DBConfig "test.db")
+    (MainConfig "/var/www/mbe.site" "" 10)
+    (DBConfig "/var/lib/mbe/storage.db")
     (ImagesConfig 300 100 "preview-")
     (AdminConfig "admin" defaultPasswordHash)
     JWT.defaultConfig
