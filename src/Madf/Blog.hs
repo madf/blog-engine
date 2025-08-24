@@ -133,6 +133,11 @@ pages = do
 
 blog :: DT.Text -> App ()
 blog base = do
+    get (capture . DT.unpack $ "/" <> base) $ do
+        conf <- askConfig
+        let dd = destDir (main conf)
+        setHeader "Content-Type" "text/html"
+        file (DT.unpack $ dd <> "/index.html")
     get (capture . DT.unpack $ "/" <> base <> "/:year/:fileName") $ do
         year <- pathParam "year"
         fn <- pathParam "fileName"

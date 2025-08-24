@@ -37,6 +37,7 @@ library
       Madf.Blog.Login
       Madf.Blog.Pages
       Madf.Blog.Pages.Edit
+      Madf.Blog.Pages.Index
       Madf.Blog.Pages.Login
       Madf.Blog.Pages.PostType
       Madf.Blog.Pages.Preview

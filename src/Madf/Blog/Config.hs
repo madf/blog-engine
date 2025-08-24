@@ -25,8 +25,9 @@ data Config = Config
     } deriving (Show)
 
 data MainConfig = MainConfig
-    { destDir :: !Text
-    , urlBase :: !Text
+    { destDir  :: !Text
+    , urlBase  :: !Text
+    , numPosts :: !Int
     } deriving (Show)
 
 newtype DBConfig = DBConfig
@@ -54,7 +55,7 @@ defaultPasswordHash = PasswordHash "$argon2id$v=19$m=65536,t=2,p=1$OjYULa8hWb3zt
 
 defaultConfig :: Config
 defaultConfig = Config
-    (MainConfig "blog" "blog")
+    (MainConfig "blog" "blog" 10)
     (DBConfig "test.db")
     (ImagesConfig 300 100 "preview-")
     (AdminConfig "admin" defaultPasswordHash)
@@ -65,7 +66,8 @@ parser = do
     mc <- section "main" $ do
         dd <- pack <$> fieldOf "dest_dir" string
         ub <- pack <$> fieldOf "url_base" string
-        return $ MainConfig dd ub
+        np <- fieldOf "num_posts" number
+        return $ MainConfig dd ub np
     dc <- section "database" $ do
         p <- pack <$> fieldOf "path" string
         return $ DBConfig p
