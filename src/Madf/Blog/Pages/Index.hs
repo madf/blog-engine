@@ -12,21 +12,19 @@ import Madf.Blog.Config
 import Madf.Blog.Utils
 
 index :: Config -> [Post.Post] -> Html ()
-index conf posts = do
-    ul_ $ do
-        mapM_ (renderExerpt conf) posts
+index conf posts = mapM_ (renderExerpt conf) posts
 
 renderExerpt :: Config -> Post.Post -> Html ()
-renderExerpt conf p = li_ $ do
-    h4_ $ do
-        with a_ [href_ url] (toHtml $ Post.postTitle p)
-    div_ $ do
-        with a_ [href_ url] $ do
-            div_ $ small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p))
-            div_ $ small_ (toHtml $ "Updated: " <> maybe "never" timeToText (Post.postUpdated p))
+renderExerpt conf p = div_ $ do
+    with a_ [href_ url, class_ "post-header"] $ do
+        with div_ [class_ "date-box"] $ do
+            let (m, d) = splitDate (Post.postCreated p)
+            span_ $ toHtml m
+            span_ $ toHtml d
+        h2_ $ toHtml (Post.postTitle p)
     div_ (exerpt p)
     where
-        url = urlBase (main conf) <> timeYear (Post.postCreated p) <> Slug.unSlug (Post.postSlug p)
+        url = urlBase (main conf) <> "/" <> timeYear (Post.postCreated p) <> "/" <> Slug.unSlug (Post.postSlug p)
 
 exerpt :: Post.Post -> Html ()
 exerpt p = exerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)

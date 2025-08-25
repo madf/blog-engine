@@ -104,6 +104,7 @@ main {
   flex-direction: row;
   justify-content: flex-start;
   margin-bottom: 10px;
+  text-decoration: none;
 }
 
 .post-header h2 {
