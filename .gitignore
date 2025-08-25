@@ -1,5 +1,6 @@
 *.swp
 .stack-work
 .vimsession
+dist-newstyle
 blog
 storage.db

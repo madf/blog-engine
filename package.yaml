@@ -1,4 +1,4 @@
-name:                blog-engine
+name:                mbe
 version:             0.1.0.0
 github:              "madf/blog-engine"
 license:             BSD-3-Clause
@@ -44,7 +44,7 @@ dependencies:
 - password
 - xxhash-ffi
 - hashable
-- jose
+- jose < 0.12
 - lens
 - crypton
 
@@ -58,6 +58,7 @@ ghc-options:
 - -Wmissing-home-modules
 - -Wpartial-fields
 - -Wredundant-constraints
+- -funbox-strict-fields
 
 default-extensions:
   OverloadedStrings
@@ -67,7 +68,7 @@ library:
   source-dirs: src
 
 executables:
-  blog-engine:
+  mbe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -76,10 +77,10 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - base
-    - blog-engine
+    - mbe
 
 tests:
-  blog-engine-test:
+  mbe-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -88,7 +89,7 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - base
-    - blog-engine
+    - mbe
     - hspec
     - hspec-wai
     - hspec-wai-json

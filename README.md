@@ -16,6 +16,8 @@
 ### Cabal
 
 ```
+# cabal build
+# cabal run mbe
 ```
 
 ### Important files and dirs
