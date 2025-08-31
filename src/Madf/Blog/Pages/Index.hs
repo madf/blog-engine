@@ -11,7 +11,7 @@ import Madf.Blog.Config
 import Madf.Blog.Time
 
 index :: Config -> [Post.Post] -> Html ()
-index conf posts = mapM_ (renderExcerpt conf) posts
+index conf = mapM_ (renderExcerpt conf)
 
 renderExcerpt :: Config -> Post.Post -> Html ()
 renderExcerpt conf p = with div_ [class_ "excerpt"] $ do
