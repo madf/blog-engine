@@ -8,17 +8,21 @@ module Madf.Blog.Post.Storage
     , get
     , update
     , list
+    , years
+    , year
     ) where
 
+import Data.List.NonEmpty qualified as DLN
 import Data.Text
 import Data.Text.Encoding
-import qualified Data.ByteString.Lazy as LBS
-import Data.Time
+import Data.ByteString.Lazy qualified as LBS
+import Data.Time.Clock
 import Data.Maybe
 import Data.Aeson
 import Data.Aeson.Types
 import Database.SQLite.Simple
-import qualified Madf.Blog.Slug as Slug
+import Madf.Blog.Slug qualified as Slug
+import Madf.Blog.Time
 import Madf.Blog.Ids
 
 data Type = Public | Unlisted !Text | Private !Text | Unknown !Text deriving (Show, Eq)
@@ -170,6 +174,14 @@ update conn slug ti bs ty isd = do
 
 list :: Connection -> Int -> Int -> IO [Post]
 list conn page perPage = fmap makePost <$> query conn (selectBase <> " ORDER BY created DESC LIMIT ? OFFSET ?") (perPage, page * perPage)
+
+years :: Connection -> IO [Year]
+years conn = fmap DLN.head . DLN.group . fmap (timeToYear . fromOnly) <$> query_ conn q
+    where
+        q = "SELECT created FROM posts ORDER BY created DESC"
+
+year :: Connection -> Year -> IO [Post]
+year conn y = fmap makePost <$> query conn (selectBase <> " WHERE created BETWEEN ? AND ? ORDER BY created DESC") (yearStart y, yearStart (succ y))
 
 makePost :: (PostId, Slug.Type, UTCTime, Maybe UTCTime, Text, LBS.ByteString, Text, Text, Bool) -> Post
 makePost (pid, slug, created, updated, t, c, ty, r, isd) = Post pid slug created updated t (fromMaybe dataError $ decode c) (makeType ty r) isd

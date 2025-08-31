@@ -9,33 +9,33 @@ import Lucid
 import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Image as Image
 import qualified Madf.Blog.Slug as Slug
-import Madf.Blog.Utils
+import Madf.Blog.Time
 
 mainPage :: [Post.Post] -> Html ()
 mainPage posts = do
     ul_ $ do
-        mapM_ renderExerpt posts
+        mapM_ renderExcerpt posts
 
-renderExerpt :: Post.Post -> Html ()
-renderExerpt p = li_ $ do
+renderExcerpt :: Post.Post -> Html ()
+renderExcerpt p = with li_ [class_ "excerpt"] $ do
     h4_ $ do
         with a_ [href_ url] (toHtml $ Post.postTitle p)
     div_ $ do
         with a_ [href_ url] $ do
             div_ $ small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p))
             div_ $ small_ (toHtml $ "Updated: " <> maybe "never" timeToText (Post.postUpdated p))
-    div_ (exerpt p)
+    div_ (excerpt p)
     where
         url = "/admin/preview/" <> Slug.unSlug (Post.postSlug p)
 
-exerpt :: Post.Post -> Html ()
-exerpt p = exerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)
+excerpt :: Post.Post -> Html ()
+excerpt p = excerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)
 
-exerpt' :: Maybe Image.Image -> Maybe Text -> Html ()
-exerpt' Nothing Nothing = return ()
-exerpt' (Just image) Nothing = div_ $ previewImage image
-exerpt' Nothing (Just t) = p_ $ toHtml t
-exerpt' (Just image) (Just t) = do
+excerpt' :: Maybe Image.Image -> Maybe Text -> Html ()
+excerpt' Nothing Nothing = return ()
+excerpt' (Just image) Nothing = div_ $ previewImage image
+excerpt' Nothing (Just t) = p_ $ toHtml t
+excerpt' (Just image) (Just t) = do
     div_ $ previewImage image
     p_ $ toHtml t
 

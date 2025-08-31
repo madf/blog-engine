@@ -61,6 +61,7 @@ ghc-options:
 - -funbox-strict-fields
 
 default-extensions:
+  ImportQualifiedPost
   OverloadedStrings
   LambdaCase
 

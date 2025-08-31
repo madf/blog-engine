@@ -8,7 +8,7 @@ import Lucid
 import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Image as Image
 import qualified Madf.Blog.Slug as Slug
-import Madf.Blog.Utils
+import Madf.Blog.Time
 
 preview :: Bool -> Post.Post -> Html ()
 preview r p = do

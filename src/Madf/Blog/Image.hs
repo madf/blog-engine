@@ -24,21 +24,23 @@ import GHC.Generics
 import Data.Text
 import Data.Text.Encoding
 import Data.Time
-import qualified Data.ByteString.Lazy as BS
+import Data.ByteString.Lazy qualified as BS
 import Data.Int
 import Data.Maybe
 import Data.Aeson
 import Database.SQLite.Simple
 import Web.Scotty (File)
 import Network.Wai.Parse (FileInfo (..))
-import qualified Codec.Picture as CP
-import qualified Codec.Picture.Metadata as CP
-import qualified Codec.Picture.Extra as CPE
+import Codec.Picture qualified as CP
+import Codec.Picture.Metadata qualified as CP
+import Codec.Picture.Extra qualified as CPE
 import Madf.Blog.Ids
 import Madf.Blog.Config
 import Madf.Blog.Files
+import Madf.Blog.Time
 import Madf.Blog.Utils
-import qualified Madf.Blog.Slug as Slug
+import Madf.Blog.Slug qualified as Slug
+import Madf.Blog.ToText
 
 data ImageInfo = ImageInfo
     { imageInfoPostId          :: !PostId
@@ -266,6 +268,7 @@ upload conn conf slug (_, fi) = do
         dph = previewHeight $ images conf
         jq = jpegQuality $ images conf
         mime = decodeUtf8 $ fileContentType fi
+        timeYear = toText . timeToYear
         cleanup sfn spn m = do
             removeFiles sfn spn
             error (unpack m)

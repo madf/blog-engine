@@ -21,14 +21,21 @@ body {
 header {
   padding: 20px;
   text-align: center;
+  border-bottom: 1px solid black;
 }
 
 footer {
   padding: 20px;
+  border-top: 1px solid black;
+}
+
+nav {
+  padding: 20px;
 }
 
 main {
-  padding: 20px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .m-l-auto {
@@ -38,7 +45,7 @@ main {
 .container {
   width: 75%;
   height: 100%;
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   background: white;
   border-radius: 8px;
@@ -50,8 +57,25 @@ main {
 
 .container main {
   flex: 1;
-  display: grid;
+  display: flex;
   position: relative;
+}
+
+.container section {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 1000px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.container aside {
+  flex-grow: 0;
+  max-width: 200px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border-left: 1px dotted black;
 }
 
 .error-message {
@@ -72,6 +96,18 @@ main {
   border-radius: 8px;
   padding: 20px;
   height: min-content;
+}
+
+.contents-year {
+  list-style-type: none;
+}
+
+.contents-post {
+  padding-left: 10px;
+}
+
+.contents-header {
+  padding-bottom: 10px;
 }
 
 .form-row {
@@ -605,4 +641,8 @@ main {
     text-align: center;
     color: #6b7280;
     padding: 40px;
+}
+
+.excerpt {
+  padding-bottom: 20px;
 }

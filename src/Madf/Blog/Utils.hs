@@ -1,37 +1,16 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Madf.Blog.Utils
-    ( timeToText
-    , splitDate
-    , currentYear
-    , timeYear
-    , mapLeft
+    ( mapLeft
     , contentHash
     , fileHash
     ) where
 
 import Data.Text
-import qualified Data.ByteString as BS
-import Data.Time.Clock
-import Data.Time.Format
+import Data.ByteString qualified as BS
 import Data.Digest.XXHash.FFI
 import Data.Hashable
 import Network.Wai.Parse (FileInfo (..))
-
-currentYear :: IO Text
-currentYear = ft "%Y" <$> getCurrentTime
-
-timeYear :: UTCTime -> Text
-timeYear = ft "%Y"
-
-timeToText :: UTCTime -> Text
-timeToText = ft "%F %T"
-
-splitDate :: UTCTime -> (Text, Text)
-splitDate t = (ft "%b" t, ft "%d" t)
-
-ft :: String -> UTCTime -> Text
-ft f t = pack (formatTime defaultTimeLocale f t)
 
 mapLeft :: (a -> b) -> Either a c -> Either b c
 mapLeft f = \case

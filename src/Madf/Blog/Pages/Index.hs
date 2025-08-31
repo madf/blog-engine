@@ -5,35 +5,32 @@ module Madf.Blog.Pages.Index
 import Data.Text (Text, pack)
 import Data.Maybe
 import Lucid
-import qualified Madf.Blog.Post.View as Post
-import qualified Madf.Blog.Image as Image
-import qualified Madf.Blog.Slug as Slug
+import Madf.Blog.Post.View qualified as Post
+import Madf.Blog.Image qualified as Image
 import Madf.Blog.Config
-import Madf.Blog.Utils
+import Madf.Blog.Time
 
 index :: Config -> [Post.Post] -> Html ()
-index conf posts = mapM_ (renderExerpt conf) posts
+index conf posts = mapM_ (renderExcerpt conf) posts
 
-renderExerpt :: Config -> Post.Post -> Html ()
-renderExerpt conf p = div_ $ do
-    with a_ [href_ url, class_ "post-header"] $ do
+renderExcerpt :: Config -> Post.Post -> Html ()
+renderExcerpt conf p = with div_ [class_ "excerpt"] $ do
+    with a_ [href_ (Post.url conf p), class_ "post-header"] $ do
         with div_ [class_ "date-box"] $ do
             let (m, d) = splitDate (Post.postCreated p)
             span_ $ toHtml m
             span_ $ toHtml d
         h2_ $ toHtml (Post.postTitle p)
-    div_ (exerpt p)
-    where
-        url = urlBase (main conf) <> "/" <> timeYear (Post.postCreated p) <> "/" <> Slug.unSlug (Post.postSlug p)
+    div_ (excerpt p)
 
-exerpt :: Post.Post -> Html ()
-exerpt p = exerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)
+excerpt :: Post.Post -> Html ()
+excerpt p = excerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)
 
-exerpt' :: Maybe Image.Image -> Maybe Text -> Html ()
-exerpt' Nothing Nothing = return ()
-exerpt' (Just image) Nothing = div_ $ previewImage image
-exerpt' Nothing (Just t) = p_ $ toHtml t
-exerpt' (Just image) (Just t) = do
+excerpt' :: Maybe Image.Image -> Maybe Text -> Html ()
+excerpt' Nothing Nothing = return ()
+excerpt' (Just image) Nothing = div_ $ previewImage image
+excerpt' Nothing (Just t) = p_ $ toHtml t
+excerpt' (Just image) (Just t) = do
     div_ $ previewImage image
     p_ $ toHtml t
 

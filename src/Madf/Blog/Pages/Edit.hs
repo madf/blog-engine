@@ -9,7 +9,7 @@ import Lucid
 import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Slug as Slug
 import Madf.Blog.Pages.PostType
-import Madf.Blog.Utils
+import Madf.Blog.Time
 
 editPage :: Post.Post -> Html ()
 editPage p = do

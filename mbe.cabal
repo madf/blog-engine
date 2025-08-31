@@ -28,6 +28,7 @@ library
       Madf.Blog
       Madf.Blog.Auth
       Madf.Blog.Config
+      Madf.Blog.Contents
       Madf.Blog.DB
       Madf.Blog.Env
       Madf.Blog.Files
@@ -47,6 +48,8 @@ library
       Madf.Blog.Post.View
       Madf.Blog.Publish
       Madf.Blog.Slug
+      Madf.Blog.Time
+      Madf.Blog.ToText
       Madf.Blog.Utils
   other-modules:
       Paths_mbe
@@ -55,7 +58,7 @@ library
   hs-source-dirs:
       src
   default-extensions:
-      OverloadedStrings LambdaCase
+      ImportQualifiedPost OverloadedStrings LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -funbox-strict-fields
   build-depends:
       JuicyPixels
@@ -96,7 +99,7 @@ executable mbe
   hs-source-dirs:
       app
   default-extensions:
-      OverloadedStrings LambdaCase
+      ImportQualifiedPost OverloadedStrings LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -funbox-strict-fields -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       JuicyPixels
@@ -139,7 +142,7 @@ test-suite mbe-test
   hs-source-dirs:
       test
   default-extensions:
-      OverloadedStrings LambdaCase
+      ImportQualifiedPost OverloadedStrings LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -funbox-strict-fields -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       JuicyPixels

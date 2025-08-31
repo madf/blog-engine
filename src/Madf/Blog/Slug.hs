@@ -17,6 +17,7 @@ import Database.SQLite.Simple.ToField
 import Data.Aeson (ToJSON, FromJSON)
 import Web.Scotty (Parsable)
 import Madf.Blog.Ids
+import Madf.Blog.ToText
 
 newtype Type = Type Text deriving (Show, ToField, FromField, ToJSON, FromJSON, Parsable)
 

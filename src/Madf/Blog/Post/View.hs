@@ -4,14 +4,20 @@ module Madf.Blog.Post.View
     , get
     , update
     , list
+    , years
+    , year
+    , url
     ) where
 
 import Data.Text
-import Data.Time
+import Data.Time.Clock
 import Data.Aeson
 import Data.Aeson.Types
 import Database.SQLite.Simple
 import Madf.Blog.Ids
+import Madf.Blog.Config
+import Madf.Blog.ToText
+import Madf.Blog.Time
 import qualified Madf.Blog.Post.Storage as Storage
 import qualified Madf.Blog.Image as Image
 import qualified Madf.Blog.Slug as Slug
@@ -109,6 +115,14 @@ list conn page perPage = do
     ps <- Storage.list conn page perPage
     mapM (fromStoragePost conn) ps
 
+years :: Connection -> IO [Year]
+years = Storage.years
+
+year :: Connection -> Year -> IO [Post]
+year conn y = do
+    ps <- Storage.year conn y
+    mapM (fromStoragePost conn) ps
+
 fromStorageBlocks :: Connection -> [Storage.Block] -> IO [Block]
 fromStorageBlocks conn = mapM (fromStorageBlock conn)
 
@@ -127,3 +141,6 @@ fromStoragePost :: Connection -> Storage.Post -> IO Post
 fromStoragePost conn p = do
     bs <- fromStorageBlocks conn (Storage.postContent p)
     return $ Post (Storage.postId p) (Storage.postSlug p) (Storage.postCreated p) (Storage.postUpdated p) (Storage.postTitle p) bs (Storage.postType p) (Storage.postIsDraft p)
+
+url :: Config -> Post -> Text
+url conf p = "/" <> urlBase (main conf) <> "/" <> toText (timeToYear $ postCreated p) <> "/" <> Slug.unSlug (postSlug p)

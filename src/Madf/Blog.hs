@@ -4,37 +4,37 @@ module Madf.Blog
     ) where
 
 import Control.Monad
-import qualified Data.Text as DT
-import qualified Data.Text.Lazy as DTL
+import Data.Text qualified as DT
+import Data.Text.Lazy qualified as DTL
 import Data.Text.Encoding
 import Data.Maybe
 import Data.Pool
-import qualified Data.Aeson as DA
+import Data.Aeson qualified as DA
 import Database.SQLite.Simple
 import Control.Monad.Reader
 import Web.Scotty.Trans as WS
 import Web.Scotty.Cookie
-import qualified Network.HTTP.Types as NT
+import Network.HTTP.Types qualified as NT
 import Network.Wai.Middleware.Static
 import Network.Wai.Middleware.Cors
 import Network.Wai.Middleware.RequestLogger
-import qualified Madf.Blog.Post.Storage as PostStorage
-import qualified Madf.Blog.Post.View as PostView
-import qualified Madf.Blog.Image as Image
-import qualified Madf.Blog.Env as Env
+import Madf.Blog.Post.Storage qualified as PostStorage
+import Madf.Blog.Post.View qualified as PostView
+import Madf.Blog.Image qualified as Image
+import Madf.Blog.Env qualified as Env
 import Madf.Blog.Config
-import qualified Madf.Blog.Pages as Pages
-import qualified Madf.Blog.Pages.Edit as Pages
-import qualified Madf.Blog.Pages.Preview as Pages
-import qualified Madf.Blog.Pages.Login as Pages
-import qualified Madf.Blog.Pages.Template as Template
-import qualified Madf.Blog.DB as DB
-import qualified Madf.Blog.JWT as JWT
-import qualified Madf.Blog.Login as Login
-import qualified Madf.Blog.Auth as Auth
-import qualified Madf.Blog.Slug as Slug
+import Madf.Blog.Pages qualified as Pages
+import Madf.Blog.Pages.Edit qualified as Pages
+import Madf.Blog.Pages.Preview qualified as Pages
+import Madf.Blog.Pages.Login qualified as Pages
+import Madf.Blog.Pages.Template qualified as Template
+import Madf.Blog.DB qualified as DB
+import Madf.Blog.JWT qualified as JWT
+import Madf.Blog.Login qualified as Login
+import Madf.Blog.Auth qualified as Auth
+import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Publish
-import Madf.Blog.Utils
+import Madf.Blog.Time
 import Lucid
 
 type App a = ScottyT Env.EnvM a
