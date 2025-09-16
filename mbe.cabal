@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Madf.Blog
+      Madf.Blog.Admin.Routes
       Madf.Blog.App
       Madf.Blog.Auth
       Madf.Blog.Config
