@@ -26,6 +26,15 @@ source-repository head
 library
   exposed-modules:
       Madf.Blog
+      Madf.Blog.Admin.Pages.Edit
+      Madf.Blog.Admin.Pages.Index
+      Madf.Blog.Admin.Pages.Login
+      Madf.Blog.Admin.Pages.NotFound
+      Madf.Blog.Admin.Pages.PostType
+      Madf.Blog.Admin.Pages.Preview
+      Madf.Blog.Admin.Pages.Select
+      Madf.Blog.Admin.Pages.Template
+      Madf.Blog.Admin.Publish
       Madf.Blog.Admin.Routes
       Madf.Blog.App
       Madf.Blog.Auth
@@ -38,19 +47,12 @@ library
       Madf.Blog.Image
       Madf.Blog.JWT
       Madf.Blog.Login
-      Madf.Blog.Pages
       Madf.Blog.Pages.Common.Contents
-      Madf.Blog.Pages.Edit
       Madf.Blog.Pages.Index
-      Madf.Blog.Pages.Login
-      Madf.Blog.Pages.PostType
-      Madf.Blog.Pages.Preview
       Madf.Blog.Pages.Template
-      Madf.Blog.Pages.Utils
       Madf.Blog.Post.Storage
       Madf.Blog.Post.View
       Madf.Blog.Public.Routes
-      Madf.Blog.Publish
       Madf.Blog.Slug
       Madf.Blog.Time
       Madf.Blog.ToText

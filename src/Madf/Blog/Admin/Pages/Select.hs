@@ -1,4 +1,4 @@
-module Madf.Blog.Pages.Utils
+module Madf.Blog.Admin.Pages.Select
     ( Option (..)
     , drawSelect
     ) where

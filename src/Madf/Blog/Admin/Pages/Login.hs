@@ -1,12 +1,12 @@
-module Madf.Blog.Pages.Login
-    ( loginPage
+module Madf.Blog.Admin.Pages.Login
+    ( login
     ) where
 
 import Data.Text
 import Lucid
 
-loginPage :: Maybe Text -> Html ()
-loginPage me = do
+login :: Maybe Text -> Html ()
+login me = do
     case me of
         Just e -> with div_ [class_ "error-message"] $ toHtml e
         Nothing -> return ()

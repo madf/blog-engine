@@ -1,4 +1,4 @@
-module Madf.Blog.Pages.Preview
+module Madf.Blog.Admin.Pages.Preview
     ( preview
     ) where
 

@@ -1,9 +1,8 @@
-module Madf.Blog.Pages
-    ( mainPage
-    , notFound
+module Madf.Blog.Admin.Pages.Index
+    ( index
     ) where
 
-import Data.Text
+import Data.Text (Text, pack)
 import Data.Maybe
 import Lucid
 import qualified Madf.Blog.Post.View as Post
@@ -11,8 +10,8 @@ import qualified Madf.Blog.Image as Image
 import qualified Madf.Blog.Slug as Slug
 import Madf.Blog.Time
 
-mainPage :: [Post.Post] -> Html ()
-mainPage posts = do
+index :: [Post.Post] -> Html ()
+index posts = do
     ul_ $ do
         mapM_ renderExcerpt posts
 
@@ -24,12 +23,12 @@ renderExcerpt p = with li_ [class_ "excerpt"] $ do
         with a_ [href_ url] $ do
             div_ $ small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p))
             div_ $ small_ (toHtml $ "Updated: " <> maybe "never" timeToText (Post.postUpdated p))
-    div_ (excerpt p)
+    excerpt p
     where
-        url = "/admin/preview/" <> Slug.unSlug (Post.postSlug p)
+        url = "/admin/" <> Slug.unSlug (Post.postSlug p)
 
 excerpt :: Post.Post -> Html ()
-excerpt p = excerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)
+excerpt p = div_ $ excerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)
 
 excerpt' :: Maybe Image.Image -> Maybe Text -> Html ()
 excerpt' Nothing Nothing = return ()
@@ -57,8 +56,3 @@ extractText :: Post.Block -> Maybe Text
 extractText = \case
     (Post.TextBlock t) -> Just t
     _ -> Nothing
-
-notFound :: Text -> Html ()
-notFound m = do
-    h1_ "Not found"
-    p_ $ toHtml m

@@ -1,11 +1,11 @@
-module Madf.Blog.Publish
+module Madf.Blog.Admin.Publish
     ( publish
     ) where
 
 import Data.Text (Text, unpack)
 import Database.SQLite.Simple
 import Lucid
-import Madf.Blog.Pages.Preview
+import Madf.Blog.Admin.Pages.Preview
 import Madf.Blog.Pages.Index
 import Madf.Blog.Pages.Template
 import Madf.Blog.Post.View qualified as Post

@@ -1,9 +1,9 @@
-module Madf.Blog.Pages.PostType
+module Madf.Blog.Admin.Pages.PostType
     ( drawPostTypeField
     ) where
 
 import Lucid
-import Madf.Blog.Pages.Utils
+import Madf.Blog.Admin.Pages.Select
 import Madf.Blog.Post.Storage
 
 drawPostTypeField :: Type -> Html ()

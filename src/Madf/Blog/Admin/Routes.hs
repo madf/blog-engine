@@ -18,16 +18,17 @@ import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Image qualified as Image
 import Madf.Blog.Post.Storage qualified as PostStorage
 import Madf.Blog.Post.View qualified as PostView
-import Madf.Blog.Pages qualified as Pages
-import Madf.Blog.Pages.Edit qualified as Pages
-import Madf.Blog.Pages.Preview qualified as Pages
-import Madf.Blog.Pages.Login qualified as Pages
-import Madf.Blog.Pages.Template qualified as Template
+import Madf.Blog.Admin.Pages.Edit qualified as Pages
+import Madf.Blog.Admin.Pages.Preview qualified as Pages
+import Madf.Blog.Admin.Pages.Login qualified as Pages
+import Madf.Blog.Admin.Pages.Template qualified as Pages
+import Madf.Blog.Admin.Pages.Index qualified as Pages
+import Madf.Blog.Admin.Pages.NotFound qualified as Pages
+import Madf.Blog.Admin.Publish
 import Madf.Blog.Login qualified as Login
 import Madf.Blog.Env qualified as Env
 import Madf.Blog.JWT qualified as JWT
 import Madf.Blog.Auth qualified as Auth
-import Madf.Blog.Publish
 import Madf.Blog.Time
 import Lucid
 
@@ -42,8 +43,8 @@ pages = do
     get  "/admin/login" getAdminLoginPage
     post "/admin/login" handleAdminLogin
     post "/admin/posts/new" createNewPost
+    get  "/admin/posts/:postSlug" getPostPreviewPage
     get  "/admin/posts/:postSlug/edit" getPostEditPage
-    get  "/admin/posts/:postSlug/preview" getPostPreviewPage
 
 api :: App ()
 api = do
@@ -125,7 +126,7 @@ lucid = html . renderText
 showPage :: Html () -> Action ()
 showPage p = do
     cy <- liftIO currentYear
-    lucid $ Template.admin cy p
+    lucid $ Pages.template cy p
 
 jsonError :: DT.Text -> Action ()
 jsonError = json
@@ -136,12 +137,12 @@ getAdminIndexPage = do
     page <- queryParamMaybe "page"
     perPage <- queryParamMaybe "perPage"
     posts <- withConn $ \conn -> PostView.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
-    showPage $ Pages.mainPage posts
+    showPage $ Pages.index posts
 
 getAdminLoginPage :: Action ()
 getAdminLoginPage = do
     me <- queryParamMaybe "error"
-    showPage $ Pages.loginPage me
+    showPage $ Pages.login me
 
 handleAdminLogin :: Action ()
 handleAdminLogin = do
@@ -169,7 +170,7 @@ getPostEditPage = do
     i <- pathParam "postSlug"
     mp <- withConn $ \conn -> PostView.get conn i
     case mp of
-        Just p -> showPage $ Pages.editPage p
+        Just p -> showPage $ Pages.edit p
         Nothing -> do
             status NT.notFound404
             showPage $ Pages.notFound "Unknown post id"

@@ -1,5 +1,5 @@
-module Madf.Blog.Pages.Edit
-    ( editPage
+module Madf.Blog.Admin.Pages.Edit
+    ( edit
     ) where
 
 import Data.Text.Encoding (decodeUtf8)
@@ -8,11 +8,11 @@ import Data.Aeson (encode)
 import Lucid
 import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Slug as Slug
-import Madf.Blog.Pages.PostType
+import Madf.Blog.Admin.Pages.PostType
 import Madf.Blog.Time
 
-editPage :: Post.Post -> Html ()
-editPage p = do
+edit :: Post.Post -> Html ()
+edit p = do
     with form_ [id_ "post-form", action_ "", method_ "post"] $ do
         input_ [hidden_ "", type_ "text", name_ "post", id_ "post", (value_ . decodeUtf8 . toStrict . encode) p]
         with div_ [class_ "header"] $ do
