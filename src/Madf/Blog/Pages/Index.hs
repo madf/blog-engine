@@ -7,15 +7,14 @@ import Data.Maybe
 import Lucid
 import Madf.Blog.Post.View qualified as Post
 import Madf.Blog.Image qualified as Image
-import Madf.Blog.Config
 import Madf.Blog.Time
 
-index :: Config -> [Post.Post] -> Html ()
-index conf = mapM_ (renderExcerpt conf)
+index :: [Post.Post] -> Html ()
+index = mapM_ renderExcerpt
 
-renderExcerpt :: Config -> Post.Post -> Html ()
-renderExcerpt conf p = with div_ [class_ "excerpt"] $ do
-    with a_ [href_ (Post.url conf p), class_ "post-header"] $ do
+renderExcerpt :: Post.Post -> Html ()
+renderExcerpt p = with div_ [class_ "excerpt"] $ do
+    with a_ [href_ (Post.url p), class_ "post-header"] $ do
         with div_ [class_ "date-box"] $ do
             let (m, d) = splitDate (Post.postCreated p)
             span_ $ toHtml m

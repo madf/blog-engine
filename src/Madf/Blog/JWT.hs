@@ -2,9 +2,9 @@ module Madf.Blog.JWT
     ( Env (..)
     , Config (..)
     , Result (..)
-    , create
+    , createEnv
     , defaultConfig
-    , parser
+    , configParser
     , issue
     , check
     , renew
@@ -36,8 +36,8 @@ data Config = Config
 
 data KeyType = HMAC | EC | RSA | EdDSA
 
-create :: Config -> IO Env
-create conf = do
+createEnv :: Config -> IO Env
+createEnv conf = do
     k <- JOSE.genJWK (genParam conf)
     case JOSE.bestJWSAlg k of
         Left e -> makeError e
@@ -49,8 +49,8 @@ create conf = do
 defaultConfig :: Config
 defaultConfig = Config "key.jwk" (JOSE.ECGenParam JOSE.P_384) 3600 "Madf.Blog"
 
-parser :: SectionParser Config
-parser = do
+configParser :: SectionParser Config
+configParser = do
     p <- fieldOf "path" string
     kt <- fieldOf "key_type" keyType
     km <- fieldOf "key_param" (keyMaterialGenParam kt)

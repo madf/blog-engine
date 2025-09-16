@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.38.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Madf.Blog
+      Madf.Blog.App
       Madf.Blog.Auth
       Madf.Blog.Config
       Madf.Blog.Contents
@@ -37,6 +38,7 @@ library
       Madf.Blog.JWT
       Madf.Blog.Login
       Madf.Blog.Pages
+      Madf.Blog.Pages.Common.Contents
       Madf.Blog.Pages.Edit
       Madf.Blog.Pages.Index
       Madf.Blog.Pages.Login
@@ -46,6 +48,7 @@ library
       Madf.Blog.Pages.Utils
       Madf.Blog.Post.Storage
       Madf.Blog.Post.View
+      Madf.Blog.Public.Routes
       Madf.Blog.Publish
       Madf.Blog.Slug
       Madf.Blog.Time

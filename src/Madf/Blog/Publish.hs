@@ -22,18 +22,18 @@ publish conn conf slug = do
     case mp of
         Nothing -> error "No such post"
         Just p -> do
-            publishPost conn conf dd p
+            publishPost conn dd p
             regenIndex conn conf dd
             regenContents conn dd
     where
         dd = destDir . main $ conf
 
-publishPost :: Connection -> Config -> Text -> Post.Post -> IO ()
-publishPost conn conf dd p = do
+publishPost :: Connection -> Text -> Post.Post -> IO ()
+publishPost conn dd p = do
     checkCreateDir pd
     cy <- currentYear
     cnt <- Contents.get conn (timeToYear $ Post.postCreated p)
-    renderToFile fp (public conf cy cnt $ preview True p)
+    renderToFile fp (public cy cnt $ preview True p)
     where
         year = timeToYear (Post.postCreated p)
         pd = dd <> "/" <> toText year
@@ -45,7 +45,7 @@ regenIndex conn conf dd = do
     cy <- currentYear
     cnt <- Contents.get conn cy
     posts <- Post.list conn 0 (numPosts $ main conf)
-    renderToFile fp (public conf cy cnt $ index conf posts)
+    renderToFile fp (public cy cnt $ index posts)
     where
         fp = unpack (dd <> "/index.html")
 

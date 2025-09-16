@@ -10,7 +10,6 @@ import Data.Text.Encoding
 import Data.Maybe
 import Data.Pool
 import Data.Aeson qualified as DA
-import Database.SQLite.Simple
 import Control.Monad.Reader
 import Web.Scotty.Trans as WS
 import Web.Scotty.Cookie
@@ -18,6 +17,7 @@ import Network.HTTP.Types qualified as NT
 import Network.Wai.Middleware.Static
 import Network.Wai.Middleware.Cors
 import Network.Wai.Middleware.RequestLogger
+import Madf.Blog.App
 import Madf.Blog.Post.Storage qualified as PostStorage
 import Madf.Blog.Post.View qualified as PostView
 import Madf.Blog.Image qualified as Image
@@ -35,31 +35,16 @@ import Madf.Blog.Auth qualified as Auth
 import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Publish
 import Madf.Blog.Time
+import Madf.Blog.Public.Routes qualified as Public
 import Lucid
-
-type App a = ScottyT Env.EnvM a
-type Action a = ActionT Env.EnvM a
-
-askPool :: Action (Pool Connection)
-askPool = lift $ asks Env.pool
-
-withConn :: (Connection -> IO a) -> Action a
-withConn f = do
-    pool <- askPool
-    liftIO $ withResource pool f
-
-askConfig :: Action Config
-askConfig = lift $ asks Env.config
 
 serve :: Env.Env -> IO ()
 serve env = do
     withResource (Env.pool env) DB.check
-    scottyOptsT WS.defaultOptions (Env.runIO env) (routes base)
-    where
-        base = urlBase . main . Env.config $ env
+    scottyOptsT WS.defaultOptions (Env.runIO env) (routes env)
 
-routes :: DT.Text -> App ()
-routes base = do
+routes :: Env.Env -> App ()
+routes env = do
     middleware logStdoutDev
     middleware $ staticPolicy (noDots >-> addBase "static")
     middleware $ cors $ const $ Just simpleCorsResourcePolicy
@@ -68,14 +53,12 @@ routes base = do
         }
     options (regex ".*") $ return ()
     pages
-    blog base
+    Public.routes env
     api
     get "/api/health" $ json True
 
 lucid :: Html a -> Action ()
-lucid h = do
-    setHeader "Content-Type" "text/html"
-    raw (renderBS h)
+lucid = html . renderText
 
 showPage :: Html () -> Action ()
 showPage p = do
@@ -130,33 +113,6 @@ pages = do
             Nothing -> do
                 status NT.notFound404
                 showPage $ Pages.notFound "Unknown post id"
-
-blog :: DT.Text -> App ()
-blog base = do
-    get (capture . DT.unpack $ "/" <> base) $ do
-        conf <- askConfig
-        let dd = destDir (main conf)
-        setHeader "Content-Type" "text/html"
-        file (DT.unpack $ dd <> "/index.html")
-    get (capture . DT.unpack $ "/" <> base <> "/:year/:fileName") $ do
-        year <- pathParam "year"
-        fn <- pathParam "fileName"
-        conf <- askConfig
-        let dd = destDir (main conf)
-        setHeader "Content-Type" "text/html"
-        file (DT.unpack $ dd <> "/" <> year <> "/" <> fn)
-    get (capture . DT.unpack $ "/" <> base <> "/:year/:postSlug/:fileName") $ do
-        year <- pathParam "year"
-        slug <- pathParam "postSlug"
-        fn <- pathParam "fileName"
-        mi <- withConn $ \conn -> Image.getByFileName conn slug fn
-        conf <- askConfig
-        let dd = destDir (main conf)
-        case mi of
-            Nothing -> status NT.notFound404
-            Just img -> do
-                setHeader "Content-Type" (DTL.fromStrict $ Image.imageMIMEType img)
-                file (DT.unpack $ dd <> "/" <> year <> "/" <> Slug.unSlug slug <> "/" <> fn)
 
 api :: App ()
 api = do

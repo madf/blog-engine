@@ -6,14 +6,14 @@ module Madf.Blog.Pages.Template
 import Data.Text
 import Lucid
 import Madf.Blog.Time
-import Madf.Blog.Config (Config)
 import Madf.Blog.Contents qualified as Contents
+import Madf.Blog.Pages.Common.Contents qualified as Contents
 
 admin :: Year -> Html () -> Html ()
 admin = template "Madf's blog - Administrative interface"
 
-public :: Config -> Year -> Contents.Contents -> Html () -> Html ()
-public conf y cnt b = doctypehtml_ $ do
+public :: Year -> Contents.Contents -> Html () -> Html ()
+public y cnt b = doctypehtml_ $ do
     head_ $ do
         title_ "Madf's blog"
         link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/styles.css"]
@@ -30,7 +30,7 @@ public conf y cnt b = doctypehtml_ $ do
                 section_ b
                 aside_ $ do
                     with h4_ [class_ "contents-header"] "Contents"
-                    Contents.render conf cnt
+                    Contents.render cnt
             footer_ $ do
                 if unYear y == 2025 then p_ "Copyright 2025 Maksym Mamontov"
                                     else p_ ("Copyright 2025-" <> toHtml y <> " Maksym Mamontov")

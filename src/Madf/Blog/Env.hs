@@ -47,11 +47,11 @@ create fp = do
         Left e -> error (unpack e)
         Right c -> do
             p <- createPool c
-            je <- JWT.create (C.jwt c)
+            je <- JWT.createEnv (C.jwt c)
             return $ Env c p je
 
 defaultEnv :: IO Env
 defaultEnv = do
     p <- createPool C.defaultConfig
-    je <- JWT.create JWT.defaultConfig
+    je <- JWT.createEnv JWT.defaultConfig
     return $ Env C.defaultConfig p je

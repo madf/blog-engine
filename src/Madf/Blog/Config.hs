@@ -26,7 +26,6 @@ data Config = Config
 
 data MainConfig = MainConfig
     { destDir  :: !Text
-    , urlBase  :: !Text
     , numPosts :: !Int
     } deriving (Show)
 
@@ -55,7 +54,7 @@ defaultPasswordHash = PasswordHash "$argon2id$v=19$m=65536,t=2,p=1$OjYULa8hWb3zt
 
 defaultConfig :: Config
 defaultConfig = Config
-    (MainConfig "/var/www/mbe.site" "" 10)
+    (MainConfig "/var/www/mbe.site" 10)
     (DBConfig "/var/lib/mbe/storage.db")
     (ImagesConfig 300 100 "preview-")
     (AdminConfig "admin" defaultPasswordHash)
@@ -65,9 +64,8 @@ parser :: IniParser Config
 parser = do
     mc <- section "main" $ do
         dd <- pack <$> fieldOf "dest_dir" string
-        ub <- pack <$> fieldOf "url_base" string
         np <- fieldOf "num_posts" number
-        return $ MainConfig dd ub np
+        return $ MainConfig dd np
     dc <- section "database" $ do
         p <- pack <$> fieldOf "path" string
         return $ DBConfig p
@@ -80,5 +78,5 @@ parser = do
         l <- pack <$> fieldOf "login" string
         ph <- PasswordHash . pack <$> fieldOf "password_hash" string
         return $ AdminConfig l ph
-    jc <- section "jwt" JWT.parser
+    jc <- section "jwt" JWT.configParser
     return $ Config mc dc ic ac jc

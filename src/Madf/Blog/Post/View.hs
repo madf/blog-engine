@@ -15,7 +15,6 @@ import Data.Aeson
 import Data.Aeson.Types
 import Database.SQLite.Simple
 import Madf.Blog.Ids
-import Madf.Blog.Config
 import Madf.Blog.ToText
 import Madf.Blog.Time
 import qualified Madf.Blog.Post.Storage as Storage
@@ -142,5 +141,5 @@ fromStoragePost conn p = do
     bs <- fromStorageBlocks conn (Storage.postContent p)
     return $ Post (Storage.postId p) (Storage.postSlug p) (Storage.postCreated p) (Storage.postUpdated p) (Storage.postTitle p) bs (Storage.postType p) (Storage.postIsDraft p)
 
-url :: Config -> Post -> Text
-url conf p = "/" <> urlBase (main conf) <> "/" <> toText (timeToYear $ postCreated p) <> "/" <> Slug.unSlug (postSlug p)
+url :: Post -> Text
+url p = "/blog/" <> toText (timeToYear $ postCreated p) <> "/" <> Slug.unSlug (postSlug p)
