@@ -15,6 +15,7 @@ import Control.Monad.Reader
 import Control.Monad.IO.Unlift (MonadUnliftIO(..))
 import qualified Madf.Blog.Config as C
 import qualified Madf.Blog.JWT as JWT
+import Madf.Blog.Error
 
 data Env = Env
     { config :: !C.Config
@@ -44,7 +45,7 @@ create :: Text -> IO Env
 create fp = do
     ec <- C.readFile fp
     case ec of
-        Left e -> error (unpack e)
+        Left e -> throwBlogError (ConfigError e)
         Right c -> do
             p <- createPool c
             je <- JWT.createEnv (C.jwt c)
