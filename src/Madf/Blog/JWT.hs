@@ -52,12 +52,12 @@ generateAndSaveKey conf = do
     LBS.writeFile (path conf) (encode key)
     return key
 
-createEnv :: Config -> IO Env
-createEnv conf = do
+createEnv :: Config -> Bool -> IO Env
+createEnv conf forceRegen = do
     exists <- doesFileExist (path conf)
-    k <- if exists
-         then loadKey (path conf)
-         else generateAndSaveKey conf
+    k <- if forceRegen || not exists
+         then generateAndSaveKey conf
+         else loadKey (path conf)
     case JOSE.bestJWSAlg k :: Either JOSE.JWTError JOSE.Alg of
         Left e -> throwBlogError (ConfigError $ "Invalid JWT key: " <> pack (show e))
         Right a -> return $ Env k a (JOSE.defaultJWTValidationSettings (== "admin")) conf

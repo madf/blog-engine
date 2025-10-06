@@ -65,8 +65,9 @@ main = do
         ShowHelp -> printHelp >> exitSuccess
         ShowVersion -> printVersion >> exitSuccess
         Run opts -> do
-            env <- maybe defaultEnv (create . pack) (configFile opts)
-            -- TODO: implement JWT key regeneration using regenKey opts
+            env <- case configFile opts of
+                Nothing -> defaultEnv
+                Just fp -> create (pack fp) (regenKey opts)
             serve env
         ParseError err -> do
             putStrLn $ "Error: " ++ err

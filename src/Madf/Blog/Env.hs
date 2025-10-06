@@ -41,18 +41,18 @@ createPool conf = do
     let pcfg = defaultPoolConfig (openWithFK conf) close 3600 10
     newPool $ setNumStripes (Just 2) pcfg
 
-create :: Text -> IO Env
-create fp = do
+create :: Text -> Bool -> IO Env
+create fp regenKey = do
     ec <- C.readFile fp
     case ec of
         Left e -> throwBlogError (ConfigError e)
         Right c -> do
             p <- createPool c
-            je <- JWT.createEnv (C.jwt c)
+            je <- JWT.createEnv (C.jwt c) regenKey
             return $ Env c p je
 
 defaultEnv :: IO Env
 defaultEnv = do
     p <- createPool C.defaultConfig
-    je <- JWT.createEnv JWT.defaultConfig
+    je <- JWT.createEnv JWT.defaultConfig False
     return $ Env C.defaultConfig p je
