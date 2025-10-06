@@ -16,9 +16,12 @@ import Data.Text.Encoding
 import qualified Data.ByteString.Lazy as LBS
 import Data.Ini.Config
 import Data.Time
+import Data.Aeson (encode, eitherDecode)
+import System.Directory (doesFileExist)
 import Control.Lens
 import qualified Crypto.JOSE.JWK as JOSE
 import qualified Crypto.JWT as JOSE
+import Madf.Blog.Error
 
 data Env = Env
     { jwk        :: !JOSE.JWK
@@ -36,15 +39,28 @@ data Config = Config
 
 data KeyType = HMAC | EC | RSA | EdDSA
 
+loadKey :: FilePath -> IO JOSE.JWK
+loadKey fp = do
+    contents <- LBS.readFile fp
+    case eitherDecode contents of
+        Left e -> throwBlogError (ConfigError $ "Failed to parse JWT key from " <> pack fp <> ": " <> pack e)
+        Right key -> return key
+
+generateAndSaveKey :: Config -> IO JOSE.JWK
+generateAndSaveKey conf = do
+    key <- JOSE.genJWK (genParam conf)
+    LBS.writeFile (path conf) (encode key)
+    return key
+
 createEnv :: Config -> IO Env
 createEnv conf = do
-    k <- JOSE.genJWK (genParam conf)
-    case JOSE.bestJWSAlg k of
-        Left e -> makeError e
+    exists <- doesFileExist (path conf)
+    k <- if exists
+         then loadKey (path conf)
+         else generateAndSaveKey conf
+    case JOSE.bestJWSAlg k :: Either JOSE.JWTError JOSE.Alg of
+        Left e -> throwBlogError (ConfigError $ "Invalid JWT key: " <> pack (show e))
         Right a -> return $ Env k a (JOSE.defaultJWTValidationSettings (== "admin")) conf
-    where
-        makeError :: JOSE.JWTError -> IO Env
-        makeError = error . show
 
 defaultConfig :: Config
 defaultConfig = Config "key.jwk" (JOSE.ECGenParam JOSE.P_384) 3600 "Madf.Blog"
@@ -96,8 +112,8 @@ make env = do
     t <- getCurrentTime
     r <- JOSE.runJOSE $ do
         JOSE.encodeCompact <$> JOSE.signClaims (jwk env) (JOSE.newJWSHeader ((), alg env)) (claims t)
-    case r of
-        Left e -> makeError e
+    case r :: Either JOSE.JWTError LBS.ByteString of
+        Left e -> throwBlogError (ConfigError $ "Failed to sign JWT: " <> pack (show e))
         Right v -> return v
     where
         claims t = JOSE.emptyClaimsSet
@@ -105,8 +121,6 @@ make env = do
             & JOSE.claimAud ?~ JOSE.Audience ["admin"]
             & JOSE.claimIat ?~ JOSE.NumericDate t
             & JOSE.claimExp ?~ JOSE.NumericDate (addUTCTime (keyExp . config $ env) t)
-        makeError :: JOSE.JWTError -> IO LBS.ByteString
-        makeError = error . show
 
 issue :: Env -> IO Text
 issue env = decodeUtf8 . LBS.toStrict <$> make env
