@@ -4,7 +4,8 @@ module Madf.Blog
     ) where
 
 import Data.Pool
-import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
+import Data.ByteString (useAsCStringLen)
+import Control.Exception (bracket)
 import Web.Scotty.Trans as WS
 import Network.Wai (Middleware)
 import Network.Wai.Middleware.Static
@@ -23,8 +24,8 @@ import Madf.Blog.Public.Routes qualified as Public
 serve :: Env.Env -> IO ()
 serve env = do
     withResource (Env.pool env) DB.check
-    logger <- makeLogger (Env.config env)
-    scottyOptsT WS.defaultOptions (Env.runIO env) (routes logger)
+    bracket (makeLogger (Env.config env)) cleanupLogger $ \loggerRes ->
+        scottyOptsT WS.defaultOptions (Env.runIO env) (routes $ loggerMiddleware loggerRes)
 
 routes :: Middleware -> App ()
 routes logger = do
@@ -38,21 +39,34 @@ routes logger = do
     Admin.routes
     Public.routes
 
-makeLogger :: Config.Config -> IO Middleware
+data LoggerResource = LoggerResource
+    { loggerMiddleware :: !Middleware
+    , cleanup          :: !(IO ())
+    }
+
+makeLogger :: Config.Config -> IO LoggerResource
 makeLogger conf = do
-    dest <- mkDestination (Config.destination lc)
-    mkRequestLogger defaultRequestLoggerSettings
+    (dest, cleanupAction) <- mkDestination (Config.destination lc)
+    mw <- mkRequestLogger defaultRequestLoggerSettings
         { outputFormat = Detailed (Config.debug lc)
         , destination = dest
         }
+    return $ LoggerResource mw cleanupAction
   where
     lc = Config.logging conf
 
-mkDestination :: Config.LogDestination -> IO Destination
+cleanupLogger :: LoggerResource -> IO ()
+cleanupLogger = cleanup
+
+mkDestination :: Config.LogDestination -> IO (Destination, IO ())
 mkDestination d = case d of
-    Config.Stdout  -> return $ Handle stdout
-    Config.File fp -> Logger <$> newFileLoggerSet defaultBufSize fp
-    Config.Syslog  -> return $ Callback syslogCallback
+    Config.Stdout  -> return (Handle stdout, return ())
+    Config.File fp -> do
+        loggerSet <- newFileLoggerSet defaultBufSize fp
+        return (Logger loggerSet, rmLoggerSet loggerSet)
+    Config.Syslog  -> return (Callback syslogCallback, return ())
 
 syslogCallback :: LogStr -> IO ()
-syslogCallback ls = unsafeUseAsCStringLen (fromLogStr ls) (syslog Nothing Info)
+syslogCallback ls = do
+    let bs = fromLogStr ls
+    useAsCStringLen bs (syslog Nothing Info)

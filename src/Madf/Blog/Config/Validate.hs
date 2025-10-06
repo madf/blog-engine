@@ -31,7 +31,8 @@ validateDirectories conf = do
     destDirErrs <- checkDirectory "main.dest_dir" (destDir $ main conf)
     dbDirErrs <- checkParentDirectory "database.path" (path $ db conf)
     jwtPathErrs <- checkJWTKeyPath "jwt.path" (T.pack . JWT.path $ jwt conf)
-    return $ destDirErrs ++ dbDirErrs ++ jwtPathErrs
+    logErrs <- validateLogDestination "logging.destination" (destination $ logging conf)
+    return $ destDirErrs ++ dbDirErrs ++ jwtPathErrs ++ logErrs
 
 checkDirectory :: Text -> Text -> IO [ValidationError]
 checkDirectory field dir = do
@@ -58,6 +59,12 @@ checkParentDirectory field filePath = do
 
 checkJWTKeyPath :: Text -> Text -> IO [ValidationError]
 checkJWTKeyPath = checkParentDirectory
+
+validateLogDestination :: Text -> LogDestination -> IO [ValidationError]
+validateLogDestination field dest = case dest of
+    Stdout -> return []
+    Syslog -> return []
+    File fp -> checkParentDirectory field (T.pack fp)
 
 validateValues :: Config -> [ValidationError]
 validateValues conf = concat
