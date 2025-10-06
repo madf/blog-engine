@@ -9,6 +9,7 @@ import System.Directory
 import System.FilePath
 import Madf.Blog.Config.Types
 import Madf.Blog.ToText
+import qualified Madf.Blog.JWT as JWT
 
 -- Validation errors
 data ValidationError
@@ -29,7 +30,8 @@ validateDirectories :: Config -> IO [ValidationError]
 validateDirectories conf = do
     destDirErrs <- checkDirectory "main.dest_dir" (destDir $ main conf)
     dbDirErrs <- checkParentDirectory "database.path" (path $ db conf)
-    return $ destDirErrs ++ dbDirErrs
+    jwtPathErrs <- checkJWTKeyPath "jwt.path" (T.pack . JWT.path $ jwt conf)
+    return $ destDirErrs ++ dbDirErrs ++ jwtPathErrs
 
 checkDirectory :: Text -> Text -> IO [ValidationError]
 checkDirectory field dir = do
@@ -54,6 +56,9 @@ checkParentDirectory field filePath = do
                 else return [DirectoryNotWritable $ field <> " parent: " <> T.pack parentDir]
         else return [ParentDirectoryNotFound $ field <> " parent: " <> T.pack parentDir]
 
+checkJWTKeyPath :: Text -> Text -> IO [ValidationError]
+checkJWTKeyPath = checkParentDirectory
+
 validateValues :: Config -> [ValidationError]
 validateValues conf = concat
     [ validatePositive "main.num_posts" (numPosts $ main conf)
@@ -61,6 +66,7 @@ validateValues conf = concat
     , validateNonEmpty "images.preview_prefix" (previewPrefix $ images conf)
     , validatePositive "images.preview_height" (previewHeight $ images conf)
     , validateNonEmpty "admin.login" (login $ admin conf)
+    , validateNonEmpty "jwt.key_issuer" (JWT.keyIssuer $ jwt conf)
     ]
 
 validatePositive :: Text -> Int -> [ValidationError]
