@@ -4,3 +4,5 @@
 dist-newstyle
 blog
 storage.db
+config.ini
+key.jwk

@@ -44,6 +44,7 @@ defaultConfig = Config
     (ImagesConfig 300 100 "preview-")
     (AdminConfig "admin" defaultPasswordHash)
     JWT.defaultConfig
+    (LoggingConfig Info)
 
 parser :: IniParser Config
 parser = do
@@ -64,4 +65,15 @@ parser = do
         ph <- PasswordHash . pack <$> fieldOf "password_hash" string
         return $ AdminConfig l ph
     jc <- section "jwt" JWT.configParser
-    return $ Config mc dc ic ac jc
+    lc <- section "logging" $ do
+        lvl <- fieldOf "level" logLevel
+        return $ LoggingConfig lvl
+    return $ Config mc dc ic ac jc lc
+
+logLevel :: Text -> Either String LogLevel
+logLevel = \case
+    "debug" -> Right Debug
+    "info" -> Right Info
+    "warning" -> Right Warning
+    "error" -> Right Error
+    v -> Left . unpack $ "Unknown log level: '" <> v <> "'."

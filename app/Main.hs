@@ -2,15 +2,17 @@ module Main (main) where
 
 import System.Environment (getArgs, getProgName)
 import System.Exit (exitSuccess, exitWith, ExitCode(..))
+import Data.Version (showVersion)
 import Data.Text
 import Madf.Blog
 import Madf.Blog.Env
+import Paths_mbe (version)
 
-version :: String
-version = "0.1.0.0"
+versionString :: String
+versionString = showVersion version
 
 printVersion :: IO ()
-printVersion = putStrLn $ "mbe version " ++ version
+printVersion = putStrLn $ "mbe version " ++ versionString
 
 printHelp :: IO ()
 printHelp = do
