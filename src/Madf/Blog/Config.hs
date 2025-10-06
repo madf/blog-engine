@@ -44,7 +44,7 @@ defaultConfig = Config
     (ImagesConfig 300 100 "preview-")
     (AdminConfig "admin" defaultPasswordHash)
     JWT.defaultConfig
-    (LoggingConfig Info)
+    (LoggingConfig False Stdout)
 
 parser :: IniParser Config
 parser = do
@@ -66,14 +66,15 @@ parser = do
         return $ AdminConfig l ph
     jc <- section "jwt" JWT.configParser
     lc <- section "logging" $ do
-        lvl <- fieldOf "level" logLevel
-        return $ LoggingConfig lvl
+        lvl <- fieldOf "debug" flag
+        dest <- fieldOf "destination" logDestination
+        return $ LoggingConfig lvl dest
     return $ Config mc dc ic ac jc lc
 
-logLevel :: Text -> Either String LogLevel
-logLevel = \case
-    "debug" -> Right Debug
-    "info" -> Right Info
-    "warning" -> Right Warning
-    "error" -> Right Error
-    v -> Left . unpack $ "Unknown log level: '" <> v <> "'."
+logDestination :: Text -> Either String LogDestination
+logDestination = \case
+    "stdout" -> Right Stdout
+    "syslog" -> Right Syslog
+    v -> if "file:" `T.isPrefixOf` v
+         then Right . File . unpack $ T.drop 5 v
+         else Left . unpack $ "Unknown log destination: '" <> v <> "'. Use 'stdout', 'syslog', or 'file:<path>'."

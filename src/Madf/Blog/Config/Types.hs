@@ -5,7 +5,7 @@ module Madf.Blog.Config.Types
     , ImagesConfig (..)
     , AdminConfig (..)
     , LoggingConfig (..)
-    , LogLevel (..)
+    , LogDestination (..)
     ) where
 
 import Data.Text
@@ -21,8 +21,8 @@ data Config = Config
     , logging :: !LoggingConfig
     } deriving (Show)
 
-data LogLevel = Debug | Info | Warning | Error
-    deriving (Show, Eq, Ord)
+data LogDestination = Stdout | File FilePath | Syslog
+    deriving (Show, Eq)
 
 data MainConfig = MainConfig
     { destDir  :: !Text
@@ -44,6 +44,7 @@ data AdminConfig = AdminConfig
     , passwordHash :: !(PasswordHash Argon2)
     } deriving (Show)
 
-newtype LoggingConfig = LoggingConfig
-    { level :: LogLevel
+data LoggingConfig = LoggingConfig
+    { debug       :: !Bool
+    , destination :: !LogDestination
     } deriving (Show)
