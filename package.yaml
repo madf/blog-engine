@@ -50,6 +50,7 @@ library:
     - config-ini
     - crypton
     - directory
+    - filepath
     - hashable
     - http-types
     - jose < 0.12

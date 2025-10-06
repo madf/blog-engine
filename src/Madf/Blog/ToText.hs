@@ -7,3 +7,6 @@ import Data.Text
 class ToText a
     where
         toText :: a -> Text
+
+instance ToText Int where
+    toText = pack . show

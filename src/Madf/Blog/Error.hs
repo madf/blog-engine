@@ -11,6 +11,7 @@ data BlogError
     | PostNotFound Text
     | ImageNotFound Text
     | SchemaError Text
+    | ConfigError Text
     deriving (Show)
 
 instance Exception BlogError

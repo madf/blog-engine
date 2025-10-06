@@ -44,6 +44,8 @@ library
       Madf.Blog.Admin.Routes
       Madf.Blog.App
       Madf.Blog.Config
+      Madf.Blog.Config.Types
+      Madf.Blog.Config.Validate
       Madf.Blog.Contents
       Madf.Blog.DB
       Madf.Blog.Env
@@ -77,6 +79,7 @@ library
     , config-ini
     , crypton
     , directory
+    , filepath
     , hashable
     , http-types
     , jose <0.12

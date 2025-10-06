@@ -1,53 +1,38 @@
 module Madf.Blog.Config
-    ( Config (..)
-    , MainConfig (..)
-    , DBConfig (..)
-    , ImagesConfig (..)
-    , AdminConfig (..)
+    ( module Madf.Blog.Config.Types
     , readFile
     , defaultConfig
+    , module Madf.Blog.Config.Validate
     ) where
 
 import Prelude hiding (readFile)
 import Data.Text
+import Data.Text qualified as T
 import qualified Data.Text.IO as DTIO
 import Data.Ini.Config
 import Data.Password.Argon2
 import qualified Madf.Blog.JWT as JWT
-import Madf.Blog.Utils
-
-data Config = Config
-    { main   :: !MainConfig
-    , db     :: !DBConfig
-    , images :: !ImagesConfig
-    , admin  :: !AdminConfig
-    , jwt    :: !JWT.Config
-    } deriving (Show)
-
-data MainConfig = MainConfig
-    { destDir  :: !Text
-    , numPosts :: !Int
-    } deriving (Show)
-
-newtype DBConfig = DBConfig
-    { path :: Text
-    } deriving (Show)
-
-data ImagesConfig = ImagesConfig
-    { previewHeight :: !Int
-    , jpegQuality   :: !Int
-    , previewPrefix :: !Text
-    } deriving (Show)
-
-data AdminConfig = AdminConfig
-    { login        :: !Text
-    , passwordHash :: !(PasswordHash Argon2)
-    } deriving (Show)
+import Madf.Blog.Config.Types
+import Madf.Blog.Config.Validate
 
 readFile :: Text -> IO (Either Text Config)
 readFile file = do
     t <- DTIO.readFile $ unpack file
-    return $ mapLeft pack (parseIniFile t parser)
+    case parseIniFile t parser of
+        Left e -> return $ Left (pack e)
+        Right c -> do
+            validationErrors <- validate c
+            case validationErrors of
+                [] -> return $ Right c
+                errs -> return $ Left $ "Configuration validation failed:\n" <> formatValidationErrors errs
+
+formatValidationErrors :: [ValidationError] -> Text
+formatValidationErrors errs = T.intercalate "\n" (Prelude.map formatError errs)
+  where
+    formatError (DirectoryNotFound dir) = "  - Directory not found: " <> dir
+    formatError (DirectoryNotWritable dir) = "  - Directory not writable: " <> dir
+    formatError (ParentDirectoryNotFound dir) = "  - Parent directory not found: " <> dir
+    formatError (InvalidValue fieldName msg) = "  - " <> fieldName <> ": " <> msg
 
 defaultPasswordHash :: PasswordHash Argon2
 defaultPasswordHash = PasswordHash "$argon2id$v=19$m=65536,t=2,p=1$OjYULa8hWb3ztYoAnzfWGA$ujHAUbMCCIYGqA1ytEq4gRgOFoAJ3dVU1lzOIL6f4y8"
