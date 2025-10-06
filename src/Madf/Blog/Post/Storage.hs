@@ -24,6 +24,7 @@ import Database.SQLite.Simple
 import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Time
 import Madf.Blog.Ids
+import Madf.Blog.Error
 
 data Type = Public | Unlisted !Text | Private !Text | Unknown !Text deriving (Show, Eq)
 
@@ -146,13 +147,13 @@ create conn = do
     now <- getCurrentTime
     mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (slug, title, content, type, reason, is_draft, created, updated) VALUES (NULL, '', ?, 'unlisted', '', ?, ?, ?) RETURNING id" ("[]" :: LBS.ByteString, True, now, now)
     case mpid of
-        Nothing -> error "Cannot create post"
+        Nothing -> throwBlogError (DatabaseError "Failed to insert post into database")
         Just pid -> do
             slug <- Slug.withId 8 pid
             execute conn "UPDATE posts SET slug = ? WHERE id = ?" (slug, pid)
             mp <- getById conn pid
             case mp of
-                Nothing -> error "Cannot create post"
+                Nothing -> throwBlogError (PostNotFound "Failed to retrieve newly created post")
                 Just p -> return p
 
 selectBase :: Query
@@ -180,8 +181,8 @@ years conn = fmap DLN.head . DLN.group . fmap (timeToYear . fromOnly) <$> query_
     where
         q = "SELECT created FROM posts ORDER BY created DESC"
 
-year :: Connection -> Year -> IO [Post]
-year conn y = fmap makePost <$> query conn (selectBase <> " WHERE created BETWEEN ? AND ? ORDER BY created DESC") (yearStart y, yearStart (succ y))
+year :: Connection -> Year -> Int -> Int -> IO [Post]
+year conn y page perPage = fmap makePost <$> query conn (selectBase <> " WHERE created BETWEEN ? AND ? ORDER BY created DESC LIMIT ? OFFSET ?") (yearStart y, yearStart (succ y), perPage, page * perPage)
 
 makePost :: (PostId, Slug.Type, UTCTime, Maybe UTCTime, Text, LBS.ByteString, Text, Text, Bool) -> Post
 makePost (pid, slug, created, updated, t, c, ty, r, isd) = Post pid slug created updated t (fromMaybe dataError $ decode c) (makeType ty r) isd

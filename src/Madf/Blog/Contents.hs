@@ -13,8 +13,8 @@ data Contents = Contents
     , contPosts   :: ![Post.Post]
     } deriving (Show)
 
-get :: Connection -> Year -> IO Contents
-get conn y = do
+get :: Connection -> Year -> Int -> Int -> IO Contents
+get conn y page perPage = do
     ys <- Post.years conn
-    ps <- Post.year conn y
+    ps <- Post.year conn y page perPage
     return $ Contents ys y ps

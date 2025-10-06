@@ -1,4 +1,4 @@
-module Madf.Blog.Pages.Index
+module Madf.Blog.Admin.Render.Index
     ( index
     ) where
 

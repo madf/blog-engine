@@ -41,6 +41,7 @@ import Madf.Blog.Time
 import Madf.Blog.Utils
 import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.ToText
+import Madf.Blog.Error
 
 data ImageInfo = ImageInfo
     { imageInfoPostId          :: !PostId
@@ -186,7 +187,7 @@ get' conn iid = do
     mr <- get conn iid
     case mr of
         Just img -> return img
-        Nothing -> error "Unknown image id"
+        Nothing -> throwBlogError (ImageNotFound $ "Unknown image id: " <> toText iid)
 
 getMultiple :: Connection -> [ImageId] -> IO [Image]
 getMultiple conn iids = withTransaction conn $ do
@@ -250,7 +251,7 @@ upload :: Connection -> Config -> Slug.Type -> File BS.ByteString -> IO Image
 upload conn conf slug (_, fi) = do
     mpi <- getPostInfo
     case mpi of
-        Nothing -> error "Unknown post id"
+        Nothing -> throwBlogError (PostNotFound $ "Unknown post slug: " <> Slug.unSlug slug)
         Just (pid, created) -> do
             let fh = contentHash fi
             moimg <- findByHash conn pid fh
@@ -271,7 +272,7 @@ upload conn conf slug (_, fi) = do
         timeYear = toText . timeToYear
         cleanup sfn spn m = do
             removeFiles sfn spn
-            error (unpack m)
+            throwBlogError (DatabaseError m)
         doUpload fh pid created = do
             let std = destDir (main conf) <> timeYear created
             let stp = std <> "/" <> Slug.unSlug slug
@@ -303,7 +304,7 @@ prepareImage fn fi = do
     BS.writeFile (unpack fn) cnt
     r <- CP.readImageWithMetadata (unpack fn)
     case r of
-        Left e -> error e
+        Left e -> throwBlogError (DatabaseError $ pack e)
         Right (img, md) -> return (md, img)
     where
         cnt = fileContent fi

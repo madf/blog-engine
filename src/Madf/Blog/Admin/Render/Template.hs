@@ -1,14 +1,14 @@
-module Madf.Blog.Pages.Template
-    ( public
+module Madf.Blog.Admin.Render.Template
+    ( template
     ) where
 
 import Lucid
 import Madf.Blog.Time
 import Madf.Blog.Contents qualified as Contents
-import Madf.Blog.Pages.Common.Contents qualified as Contents
+import Madf.Blog.Admin.Render.Contents qualified as Contents
 
-public :: Year -> Contents.Contents -> Html () -> Html ()
-public y cnt b = doctypehtml_ $ do
+template :: Year -> Contents.Contents -> Html () -> Html ()
+template y cnt b = doctypehtml_ $ do
     head_ $ do
         title_ "Madf's blog"
         link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/styles.css"]
@@ -25,7 +25,7 @@ public y cnt b = doctypehtml_ $ do
                 section_ b
                 aside_ $ do
                     with h4_ [class_ "contents-header"] "Contents"
-                    Contents.render cnt
+                    Contents.draw cnt
             footer_ $ do
                 if unYear y == 2025 then p_ "Copyright 2025 Maksym Mamontov"
                                     else p_ ("Copyright 2025-" <> toHtml y <> " Maksym Mamontov")

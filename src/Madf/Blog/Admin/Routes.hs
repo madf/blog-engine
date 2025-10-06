@@ -25,10 +25,10 @@ import Madf.Blog.Admin.Pages.Template qualified as Pages
 import Madf.Blog.Admin.Pages.Index qualified as Pages
 import Madf.Blog.Admin.Pages.NotFound qualified as Pages
 import Madf.Blog.Admin.Publish
-import Madf.Blog.Login qualified as Login
+import Madf.Blog.Admin.Auth qualified as Auth
+import Madf.Blog.Admin.Login qualified as Login
 import Madf.Blog.Env qualified as Env
 import Madf.Blog.JWT qualified as JWT
-import Madf.Blog.Auth qualified as Auth
 import Madf.Blog.Time
 import Lucid
 
@@ -45,6 +45,7 @@ pages = do
     post "/admin/posts/new" createNewPost
     get  "/admin/posts/:postSlug" getPostPreviewPage
     get  "/admin/posts/:postSlug/edit" getPostEditPage
+    get  "/admin/years/:year" getYearPostsPage
 
 api :: App ()
 api = do
@@ -185,3 +186,12 @@ getPostPreviewPage = do
         Nothing -> do
             status NT.notFound404
             showPage $ Pages.notFound "Unknown post id"
+
+getYearPostsPage :: Action ()
+getYearPostsPage = do
+    Auth.require
+    y <- pathParam "year"
+    page <- queryParamMaybe "page"
+    perPage <- queryParamMaybe "perPage"
+    posts <- withConn $ \conn -> PostView.year conn y (fromMaybe 0 page) (fromMaybe 10 perPage)
+    showPage $ Pages.index posts

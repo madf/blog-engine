@@ -8,6 +8,7 @@ import qualified Data.Text as DT
 import Database.SQLite.Simple
 import qualified Madf.Blog.Slug as Slug
 import Madf.Blog.Ids
+import Madf.Blog.Error
 
 check :: Connection -> IO ()
 check conn = do
@@ -17,7 +18,7 @@ check conn = do
     unless ("images" `elem` ts) (createImagesTable conn)
     msv <- fmap fromOnly . listToMaybe <$> query_ conn "SELECT schema_version FROM info"
     case msv of
-        Nothing -> error "Cannot query database schema version."
+        Nothing -> throwBlogError (SchemaError "Cannot query database schema version.")
         Just sv -> performUpdates conn sv
 
 performUpdates :: Connection -> Int -> IO ()
@@ -38,7 +39,7 @@ updateToV3 conn = withTransaction conn $ do
     is <- fmap fromOnly <$> query_ conn "SELECT id FROM posts"
     us <- mapM slugUpdate is
     executeMany conn "UPDATE posts SET slug = ? WHERE id = ?" us
-    execute_ conn "UPDATE info SET schema_version = 2"
+    execute_ conn "UPDATE info SET schema_version = 3"
     where
         slugUpdate :: PostId -> IO (Slug.Type, PostId)
         slugUpdate i = do

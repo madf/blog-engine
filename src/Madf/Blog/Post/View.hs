@@ -117,9 +117,9 @@ list conn page perPage = do
 years :: Connection -> IO [Year]
 years = Storage.years
 
-year :: Connection -> Year -> IO [Post]
-year conn y = do
-    ps <- Storage.year conn y
+year :: Connection -> Year -> Int -> Int -> IO [Post]
+year conn y page perPage = do
+    ps <- Storage.year conn y page perPage
     mapM (fromStoragePost conn) ps
 
 fromStorageBlocks :: Connection -> [Storage.Block] -> IO [Block]

@@ -1,5 +1,5 @@
-module Madf.Blog.Pages.Common.Contents
-    ( render
+module Madf.Blog.Admin.Render.Contents
+    ( draw
     ) where
 
 import Lucid
@@ -8,8 +8,8 @@ import Madf.Blog.Post.View qualified as Post
 import Madf.Blog.Time
 import Madf.Blog.ToText
 
-render :: Contents -> Html ()
-render (Contents ys y ps) = with ul_ [class_ "contents-year"] $ mapM_ renderYear ys
+draw :: Contents -> Html ()
+draw (Contents ys y ps) = with ul_ [class_ "contents-year"] $ mapM_ renderYear ys
     where
         renderYear :: Year -> Html ()
         renderYear y'

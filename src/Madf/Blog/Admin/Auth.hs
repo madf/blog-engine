@@ -1,4 +1,4 @@
-module Madf.Blog.Auth
+module Madf.Blog.Admin.Auth
     ( require
     , requireNoRedirect
     , redirectUnauthorized

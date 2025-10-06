@@ -6,8 +6,8 @@ import Data.Text (Text, unpack)
 import Database.SQLite.Simple
 import Lucid
 import Madf.Blog.Admin.Pages.Preview
-import Madf.Blog.Pages.Index
-import Madf.Blog.Pages.Template
+import Madf.Blog.Admin.Render.Template qualified as Render
+import Madf.Blog.Admin.Render.Index qualified as Render
 import Madf.Blog.Post.View qualified as Post
 import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Config
@@ -15,12 +15,13 @@ import Madf.Blog.Files
 import Madf.Blog.Time
 import Madf.Blog.Contents qualified as Contents
 import Madf.Blog.ToText
+import Madf.Blog.Error
 
 publish :: Connection -> Config -> Slug.Type -> IO ()
 publish conn conf slug = do
     mp <- Post.get conn slug
     case mp of
-        Nothing -> error "No such post"
+        Nothing -> throwBlogError (PostNotFound $ "No such post: " <> Slug.unSlug slug)
         Just p -> do
             publishPost conn dd p
             regenIndex conn conf dd
@@ -32,8 +33,8 @@ publishPost :: Connection -> Text -> Post.Post -> IO ()
 publishPost conn dd p = do
     checkCreateDir pd
     cy <- currentYear
-    cnt <- Contents.get conn (timeToYear $ Post.postCreated p)
-    renderToFile fp (public cy cnt $ preview True p)
+    cnt <- Contents.get conn (timeToYear $ Post.postCreated p) 0 maxBound
+    renderToFile fp (Render.template cy cnt $ preview True p)
     where
         year = timeToYear (Post.postCreated p)
         pd = dd <> "/" <> toText year
@@ -43,9 +44,9 @@ regenIndex :: Connection -> Config -> Text -> IO ()
 regenIndex conn conf dd = do
     checkCreateDir dd
     cy <- currentYear
-    cnt <- Contents.get conn cy
+    cnt <- Contents.get conn cy 0 maxBound
     posts <- Post.list conn 0 (numPosts $ main conf)
-    renderToFile fp (public cy cnt $ index posts)
+    renderToFile fp (Render.template cy cnt $ Render.index posts)
     where
         fp = unpack (dd <> "/index.html")
 
