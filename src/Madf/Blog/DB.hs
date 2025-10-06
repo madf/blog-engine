@@ -23,8 +23,8 @@ check conn = do
 
 performUpdates :: Connection -> Int -> IO ()
 performUpdates conn sv
-    | sv < 2    = updateToV2 conn
-    | sv < 3    = updateToV3 conn
+    | sv < 2    = updateToV2 conn >> performUpdates conn 2
+    | sv < 3    = updateToV3 conn >> performUpdates conn 3
     | otherwise = return ()
 
 updateToV2 :: Connection -> IO ()
