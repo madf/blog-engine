@@ -10,6 +10,7 @@ data BlogError
     = DatabaseError Text
     | PostNotFound Text
     | ImageNotFound Text
+    | ImageError Text
     | SchemaError Text
     | ConfigError Text
     deriving (Show)

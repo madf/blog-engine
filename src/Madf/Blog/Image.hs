@@ -245,7 +245,7 @@ createPreview jq dh pfp md img = do
         save simg = case CP.lookup CP.Format md of
             Just CP.SourceJpeg -> CP.saveJpgImage jq (unpack pfp) simg
             Just CP.SourcePng  -> CP.savePngImage (unpack pfp) simg
-            v                  -> error $ "Unsupported image format: '" ++ show v ++ "'"
+            v                  -> throwBlogError $ ImageError $ "Unsupported image format: " <> pack (show v)
 
 upload :: Connection -> Config -> Slug.Type -> File BS.ByteString -> IO Image
 upload conn conf slug (_, fi) = do
