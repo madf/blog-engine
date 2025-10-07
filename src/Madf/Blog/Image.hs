@@ -274,7 +274,7 @@ upload conn conf slug (_, fi) = do
             removeFiles sfn spn
             throwBlogError (DatabaseError m)
         doUpload fh pid created = do
-            let std = destDir (main conf) <> timeYear created
+            let std = destDir (main conf) <> "/" <> timeYear created
             let stp = std <> "/" <> Slug.unSlug slug
             checkCreateDir stp
             let sfn = stp <> "/" <> fn
@@ -284,7 +284,7 @@ upload conn conf slug (_, fi) = do
             fs <- getSize sfn
             ps <- getSize spn
             now <- getCurrentTime
-            let uBase = "blog/" <> timeYear created <> "/" <> Slug.unSlug slug
+            let uBase = "/blog/" <> timeYear created <> "/" <> Slug.unSlug slug
             let u = uBase <> "/" <> fn
             let pu = uBase <> "/" <> pn
             ri <- createImage conn (ImageInfo pid "" fn fs fh (width img) (height img) mime u pn ps pw ph pu now Nothing 1)

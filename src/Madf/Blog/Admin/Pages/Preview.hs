@@ -18,7 +18,7 @@ preview r p = do
             span_ $ toHtml m
             span_ $ toHtml d
         h2_ $ toHtml (Post.postTitle p)
-        unless r $ with a_ [href_ ("/admin/edit/" <> Slug.unSlug (Post.postSlug p)), class_ "link-btn btn-secondary m-l-auto"] (span_ [class_ "icon"] "✎")
+        unless r $ with a_ [href_ ("/admin/posts/" <> Slug.unSlug (Post.postSlug p) <> "/edit"), class_ "link-btn btn-secondary m-l-auto"] (span_ [class_ "icon"] "✎")
     hr_ []
     mapM_ renderBlock (Prelude.zip (Post.postContent p) [1..])
     div_ [class_ "post-footer"] $ do

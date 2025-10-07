@@ -25,7 +25,7 @@ renderExcerpt p = with li_ [class_ "excerpt"] $ do
             div_ $ small_ (toHtml $ "Updated: " <> maybe "never" timeToText (Post.postUpdated p))
     excerpt p
     where
-        url = "/admin/" <> Slug.unSlug (Post.postSlug p)
+        url = "/admin/posts/" <> Slug.unSlug (Post.postSlug p)
 
 excerpt :: Post.Post -> Html ()
 excerpt p = div_ $ excerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)
