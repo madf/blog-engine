@@ -54,6 +54,7 @@ library
       Madf.Blog.Ids
       Madf.Blog.Image
       Madf.Blog.JWT
+      Madf.Blog.Logger
       Madf.Blog.Post.Storage
       Madf.Blog.Post.View
       Madf.Blog.Public.Routes

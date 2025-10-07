@@ -15,6 +15,7 @@ import System.Posix.Signals (installHandler, Handler(..), sigTERM, sigINT)
 import Madf.Blog.App
 import Madf.Blog.Config qualified as Config
 import Madf.Blog.Env qualified as Env
+import Madf.Blog.Logger qualified as Logger
 import Madf.Blog.DB qualified as DB
 import Madf.Blog.Admin.Routes qualified as Admin
 import Madf.Blog.Public.Routes qualified as Public
@@ -24,7 +25,7 @@ serve env = do
     withResource (Env.pool env) DB.check
     let warpSettings = makeSettings (Env.config env)
         opts = WS.Options 1 warpSettings
-        logger = Env.loggerMiddleware . Env.loggerRes $ env
+        logger = Logger.loggerMiddleware . Env.loggerRes $ env
     scottyOptsT opts (Env.runIO env) (routes logger)
 
 makeSettings :: Config.Config -> Settings
