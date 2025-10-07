@@ -64,6 +64,7 @@ library:
     - scotty >= 0.22
     - sqlite-simple
     - time
+    - unix
     - unliftio-core
     - wai
     - wai-cors

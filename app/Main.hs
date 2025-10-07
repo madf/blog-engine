@@ -4,8 +4,11 @@ import System.Environment (getArgs, getProgName)
 import System.Exit (exitSuccess, exitWith, ExitCode(..))
 import Data.Version (showVersion)
 import Data.Text
+import Control.Exception (bracket)
 import Madf.Blog
 import Madf.Blog.Env
+import Madf.Blog.Config qualified as Config
+import Madf.Blog.Error
 import Paths_mbe (version)
 
 versionString :: String
@@ -66,12 +69,19 @@ main = do
     case parseArgs args of
         ShowHelp -> printHelp >> exitSuccess
         ShowVersion -> printVersion >> exitSuccess
-        Run opts -> do
-            env <- case configFile opts of
-                Nothing -> defaultEnv
-                Just fp -> create (pack fp) (regenKey opts)
-            serve env
+        Run opts -> runApp opts
         ParseError err -> do
             putStrLn $ "Error: " ++ err
             putStrLn "Use --help for usage information"
             exitWith (ExitFailure 1)
+
+runApp :: RunOptions -> IO ()
+runApp opts = do
+    conf <- case configFile opts of
+        Nothing -> return Config.defaultConfig
+        Just fp -> do
+            ec <- Config.readFile (pack fp)
+            case ec of
+                Left e -> throwBlogError (ConfigError e)
+                Right c -> return c
+    bracket (create conf (regenKey opts)) destroy serve

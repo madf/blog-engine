@@ -94,6 +94,7 @@ library
     , sqlite-simple
     , text
     , time
+    , unix
     , unliftio-core
     , wai
     , wai-cors
