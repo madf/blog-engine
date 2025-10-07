@@ -69,6 +69,7 @@ library:
     - wai-cors
     - wai-extra
     - wai-middleware-static
+    - warp
     - xxhash-ffi
     - JuicyPixels
     - JuicyPixels-extra

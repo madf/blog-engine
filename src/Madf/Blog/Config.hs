@@ -44,7 +44,8 @@ defaultConfig = Config
     (ImagesConfig 300 100 "preview-")
     (AdminConfig "admin" defaultPasswordHash)
     JWT.defaultConfig
-    (LoggingConfig False Stdout)
+    (LoggingConfig Stdout)
+    (ServerConfig 3000 "127.0.0.1" False)
 
 parser :: IniParser Config
 parser = do
@@ -66,10 +67,14 @@ parser = do
         return $ AdminConfig l ph
     jc <- section "jwt" JWT.configParser
     lc <- section "logging" $ do
-        lvl <- fieldOf "debug" flag
         dest <- fieldOf "destination" logDestination
-        return $ LoggingConfig lvl dest
-    return $ Config mc dc ic ac jc lc
+        return $ LoggingConfig dest
+    sc <- section "server" $ do
+        p <- fieldOf "port" number
+        h <- pack <$> fieldOf "host" string
+        d <- fieldOf "debug" flag
+        return $ ServerConfig p h d
+    return $ Config mc dc ic ac jc lc sc
 
 logDestination :: Text -> Either String LogDestination
 logDestination = \case

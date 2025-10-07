@@ -5,12 +5,15 @@ module Madf.Blog
 
 import Data.Pool
 import Data.ByteString (useAsCStringLen)
+import Data.String (fromString)
+import Data.Text (unpack)
 import Control.Exception (bracket)
 import Web.Scotty.Trans as WS
 import Network.Wai (Middleware)
 import Network.Wai.Middleware.Static
 import Network.Wai.Middleware.Cors
 import Network.Wai.Middleware.RequestLogger
+import Network.Wai.Handler.Warp (Settings, defaultSettings, setPort, setHost)
 import System.Log.FastLogger
 import System.IO (stdout)
 import System.Posix.Syslog (syslog, Priority (..))
@@ -24,8 +27,16 @@ import Madf.Blog.Public.Routes qualified as Public
 serve :: Env.Env -> IO ()
 serve env = do
     withResource (Env.pool env) DB.check
-    bracket (makeLogger (Env.config env)) cleanupLogger $ \loggerRes ->
-        scottyOptsT WS.defaultOptions (Env.runIO env) (routes $ loggerMiddleware loggerRes)
+    bracket (makeLogger (Env.config env)) cleanupLogger $ \loggerRes -> do
+        let warpSettings = makeSettings (Env.config env)
+            opts = WS.Options 1 warpSettings
+        scottyOptsT opts (Env.runIO env) (routes $ loggerMiddleware loggerRes)
+
+makeSettings :: Config.Config -> Settings
+makeSettings conf =
+    let sc = Config.server conf
+    in setPort (Config.port sc)
+     $ setHost (fromString $ unpack $ Config.host sc) defaultSettings
 
 routes :: Middleware -> App ()
 routes logger = do
@@ -46,14 +57,12 @@ data LoggerResource = LoggerResource
 
 makeLogger :: Config.Config -> IO LoggerResource
 makeLogger conf = do
-    (dest, cleanupAction) <- mkDestination (Config.destination lc)
+    (dest, cleanupAction) <- mkDestination (Config.destination . Config.logging $ conf)
     mw <- mkRequestLogger defaultRequestLoggerSettings
-        { outputFormat = Detailed (Config.debug lc)
+        { outputFormat = Detailed (Config.debug . Config.server $ conf)
         , destination = dest
         }
     return $ LoggerResource mw cleanupAction
-  where
-    lc = Config.logging conf
 
 cleanupLogger :: LoggerResource -> IO ()
 cleanupLogger = cleanup

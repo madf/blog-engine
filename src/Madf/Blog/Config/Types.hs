@@ -6,6 +6,7 @@ module Madf.Blog.Config.Types
     , AdminConfig (..)
     , LoggingConfig (..)
     , LogDestination (..)
+    , ServerConfig (..)
     ) where
 
 import Data.Text
@@ -19,6 +20,7 @@ data Config = Config
     , admin   :: !AdminConfig
     , jwt     :: !JWT.Config
     , logging :: !LoggingConfig
+    , server  :: !ServerConfig
     } deriving (Show)
 
 data LogDestination = Stdout | File FilePath | Syslog
@@ -44,7 +46,12 @@ data AdminConfig = AdminConfig
     , passwordHash :: !(PasswordHash Argon2)
     } deriving (Show)
 
-data LoggingConfig = LoggingConfig
-    { debug       :: !Bool
-    , destination :: !LogDestination
+newtype LoggingConfig = LoggingConfig
+    { destination :: LogDestination
+    } deriving (Show)
+
+data ServerConfig = ServerConfig
+    { port  :: !Int
+    , host  :: !Text
+    , debug :: !Bool
     } deriving (Show)

@@ -74,6 +74,8 @@ validateValues conf = concat
     , validatePositive "images.preview_height" (previewHeight $ images conf)
     , validateNonEmpty "admin.login" (login $ admin conf)
     , validateNonEmpty "jwt.key_issuer" (JWT.keyIssuer $ jwt conf)
+    , validatePort "server.port" (port $ server conf)
+    , validateNonEmpty "server.host" (host $ server conf)
     ]
 
 validatePositive :: Text -> Int -> [ValidationError]
@@ -90,3 +92,8 @@ validateNonEmpty :: Text -> Text -> [ValidationError]
 validateNonEmpty field t
     | T.null t  = [InvalidValue field "Value cannot be empty"]
     | otherwise = []
+
+validatePort :: Text -> Int -> [ValidationError]
+validatePort field p
+    | p >= 1 && p <= 65535 = []
+    | otherwise            = [InvalidValue field $ "Port must be between 1 and 65535, got: " <> toText p]

@@ -99,6 +99,7 @@ library
     , wai-cors
     , wai-extra
     , wai-middleware-static
+    , warp
     , xxhash-ffi
   default-language: Haskell2010
 
