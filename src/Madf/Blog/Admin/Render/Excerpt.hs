@@ -11,13 +11,16 @@ import Madf.Blog.Time
 
 render :: Post.Post -> Html ()
 render p = with div_ [class_ "excerpt"] $ do
-    with a_ [href_ (Post.url p), class_ "post-header"] $ do
+    with a_ [href_ postURL, class_ "post-header"] $ do
         with div_ [class_ "date-box"] $ do
             let (m, d) = splitDate (Post.postCreated p)
             span_ $ toHtml m
             span_ $ toHtml d
         h2_ $ toHtml (Post.postTitle p)
     div_ (excerpt p)
+    with a_ [href_ postURL] "Read more..."
+    where
+        postURL = Post.url p <> ".html"
 
 excerpt :: Post.Post -> Html ()
 excerpt p = case ((firstImage $ Post.postContent p), (firstTextBlock $ Post.postContent p)) of
