@@ -1,6 +1,5 @@
 module Madf.Blog.Admin.Render.Template
     ( template
-    , base
     ) where
 
 import Lucid
@@ -8,8 +7,8 @@ import Madf.Blog.Time
 import Madf.Blog.Contents qualified as Contents
 import Madf.Blog.Admin.Render.Contents qualified as Contents
 
-base :: Year -> Html () -> Html ()
-base y b = doctypehtml_ $ do
+template :: Year -> Contents.Contents -> Html () -> Html ()
+template y cnt b = doctypehtml_ $ do
     head_ $ do
         title_ "Madf's blog"
         link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/styles.css"]
@@ -20,13 +19,6 @@ base y b = doctypehtml_ $ do
         with div_ [class_ "container"] $ do
             header_ $ do
                 h1_ "Madf's blog"
-            b
-            footer_ $ do
-                if unYear y == 2025 then p_ "Copyright 2025 Maksym Mamontov"
-                                    else p_ ("Copyright 2025-" <> toHtml y <> " Maksym Mamontov")
-
-template :: Year -> Contents.Contents -> Html () -> Html ()
-template y cnt b = base y $ do
             nav_ $ do
                 h3_ "Home"
             main_ $ do
@@ -34,3 +26,6 @@ template y cnt b = base y $ do
                 aside_ $ do
                     with h4_ [class_ "contents-header"] "Contents"
                     Contents.draw cnt
+            footer_ $ do
+                if unYear y == 2025 then p_ "Copyright 2025 Maksym Mamontov"
+                                    else p_ ("Copyright 2025-" <> toHtml y <> " Maksym Mamontov")

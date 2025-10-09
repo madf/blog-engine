@@ -2,19 +2,25 @@ module Madf.Blog.Admin.Render.Index
     ( index
     ) where
 
-import Data.Text (Text, pack)
-import Data.Maybe
 import Lucid
 import Madf.Blog.Post.View qualified as Post
 import Madf.Blog.Image qualified as Image
 import Madf.Blog.Time
+import Madf.Blog.ToText
+import Data.Text (Text, pack)
+import Data.Maybe
 
-index :: [Post.Post] -> Html ()
-index = mapM_ renderExcerpt
+index :: Year -> [Post.Post] -> Html ()
+index cy posts = do
+    mapM_ renderExcerpt posts
+    with div_ [class_ "year-link"] $ do
+        p_ $ do
+            "More posts in "
+            with a_ [href_ ("/blog/" <> toText cy)] (toHtml cy)
 
 renderExcerpt :: Post.Post -> Html ()
 renderExcerpt p = with div_ [class_ "excerpt"] $ do
-    with a_ [href_ (Post.url p), class_ "post-header"] $ do
+    with a_ [href_ (Post.url p <> ".html"), class_ "post-header"] $ do
         with div_ [class_ "date-box"] $ do
             let (m, d) = splitDate (Post.postCreated p)
             span_ $ toHtml m
