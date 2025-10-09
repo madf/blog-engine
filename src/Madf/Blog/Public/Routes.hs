@@ -14,6 +14,7 @@ import Madf.Blog.Image qualified as Image
 routes :: App ()
 routes = do
     get "/blog" getIndexPage
+    get "/blog/:year" getYearIndexPage
     get "/blog/:year/:fileName" getPostPage
     get "/blog/:year/:postSlug/:fileName" getPostImage
 
@@ -22,6 +23,13 @@ getIndexPage = do
     setHeader "Content-Type" "text/html"
     dd <- Config.destDir . Config.main <$> askConfig
     file (DT.unpack $ dd <> "/index.html")
+
+getYearIndexPage :: Action ()
+getYearIndexPage = do
+    year <- pathParam "year"
+    setHeader "Content-Type" "text/html"
+    dd <- Config.destDir . Config.main <$> askConfig
+    file (DT.unpack $ dd <> "/" <> year <> "/index.html")
 
 getPostPage :: Action ()
 getPostPage = do

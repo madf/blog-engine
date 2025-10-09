@@ -24,6 +24,6 @@ renderYearLink y = with a_ [href_ url] (toHtml y)
 
 renderPost :: Post.Post -> Html ()
 renderPost p = li_ $ do
-    with a_ [href_ (Post.url p)] $ case Post.postTitle p of
+    with a_ [href_ (Post.url p <> ".html")] $ case Post.postTitle p of
         "" -> toHtml (timeToText $ Post.postCreated p)
         t  -> toHtml t

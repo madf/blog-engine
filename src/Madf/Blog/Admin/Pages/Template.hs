@@ -1,13 +1,14 @@
 module Madf.Blog.Admin.Pages.Template
-    ( template
+    ( base
+    , template
     ) where
 
 import Data.Text
 import Lucid
 import Madf.Blog.Time
 
-template :: Year -> Html () -> Html ()
-template y b = doctypehtml_ $ do
+base :: Year -> Html () -> Html ()
+base y b = doctypehtml_ $ do
     head_ $ do
         title_ (toHtml title)
         link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/styles.css"]
@@ -18,14 +19,18 @@ template y b = doctypehtml_ $ do
         with div_ [class_ "container"] $ do
             header_ $ do
                 h1_ (toHtml title)
-            nav_ $ do
-                h3_ "Home"
-            main_ $ do
-                section_ b
-                aside_ "Contents"
+            b
             footer_ $ do
                 if unYear y == 2025 then p_ "Copyright 2025 Maksym Mamontov"
                                     else p_ ("Copyright 2025-" <> toHtml y <> " Maksym Mamontov")
     where
         title :: Text
         title = "Madf's blog - Administrative interface"
+
+template :: Year -> Html () -> Html ()
+template y b = base y $ do
+            nav_ $ do
+                h3_ "Home"
+            main_ $ do
+                section_ b
+                aside_ "Contents"

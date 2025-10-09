@@ -143,7 +143,8 @@ getAdminIndexPage = do
 getAdminLoginPage :: Action ()
 getAdminLoginPage = do
     me <- queryParamMaybe "error"
-    showPage $ Pages.login me
+    cy <- liftIO currentYear
+    lucid $ Pages.login cy me
 
 handleAdminLogin :: Action ()
 handleAdminLogin = do

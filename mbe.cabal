@@ -41,6 +41,7 @@ library
       Madf.Blog.Admin.Render.Contents
       Madf.Blog.Admin.Render.Index
       Madf.Blog.Admin.Render.Template
+      Madf.Blog.Admin.Render.YearIndex
       Madf.Blog.Admin.Routes
       Madf.Blog.App
       Madf.Blog.Config

@@ -8,6 +8,7 @@ import Lucid
 import Madf.Blog.Admin.Pages.Preview
 import Madf.Blog.Admin.Render.Template qualified as Render
 import Madf.Blog.Admin.Render.Index qualified as Render
+import Madf.Blog.Admin.Render.YearIndex qualified as RenderYear
 import Madf.Blog.Post.View qualified as Post
 import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Config
@@ -25,6 +26,7 @@ publish conn conf slug = do
         Just p -> do
             publishPost conn dd p
             regenIndex conn conf dd
+            regenYearIndex conn dd (timeToYear $ Post.postCreated p)
             regenContents conn dd
     where
         dd = destDir . main $ conf
@@ -49,6 +51,17 @@ regenIndex conn conf dd = do
     renderToFile fp (Render.template cy cnt $ Render.index posts)
     where
         fp = unpack (dd <> "/index.html")
+
+regenYearIndex :: Connection -> Text -> Year -> IO ()
+regenYearIndex conn dd year = do
+    checkCreateDir yd
+    cy <- currentYear
+    cnt <- Contents.get conn year 0 maxBound
+    posts <- Post.year conn year 0 maxBound
+    renderToFile fp (Render.template cy cnt $ RenderYear.yearIndex posts)
+    where
+        yd = dd <> "/" <> toText year
+        fp = unpack (yd <> "/index.html")
 
 regenContents :: Connection -> Text -> IO ()
 regenContents = undefined
