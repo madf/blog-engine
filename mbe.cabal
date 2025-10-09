@@ -28,6 +28,7 @@ library
       Madf.Blog
       Madf.Blog.Admin.Auth
       Madf.Blog.Admin.Login
+      Madf.Blog.Admin.Nav
       Madf.Blog.Admin.Pages.Contents
       Madf.Blog.Admin.Pages.Edit
       Madf.Blog.Admin.Pages.Index
@@ -41,7 +42,6 @@ library
       Madf.Blog.Admin.Render.Contents
       Madf.Blog.Admin.Render.Excerpt
       Madf.Blog.Admin.Render.Index
-      Madf.Blog.Admin.Render.Nav
       Madf.Blog.Admin.Render.Template
       Madf.Blog.Admin.Routes
       Madf.Blog.App

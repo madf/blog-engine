@@ -30,6 +30,7 @@ import Madf.Blog.Admin.Login qualified as Login
 import Madf.Blog.Env qualified as Env
 import Madf.Blog.JWT qualified as JWT
 import Madf.Blog.Time
+import Madf.Blog.ToText
 import Lucid
 
 routes :: App ()
@@ -124,10 +125,10 @@ postAPI = do
 lucid :: Html a -> Action ()
 lucid = html . renderText
 
-showPage :: Html () -> Action ()
-showPage p = do
+showPage :: ([(DT.Text, DT.Text)], DT.Text) -> Html () -> Action ()
+showPage breadcrumbs p = do
     cy <- liftIO currentYear
-    lucid $ Pages.template cy p
+    lucid $ Pages.template breadcrumbs cy p
 
 jsonError :: DT.Text -> Action ()
 jsonError = json
@@ -138,7 +139,7 @@ getAdminIndexPage = do
     page <- queryParamMaybe "page"
     perPage <- queryParamMaybe "perPage"
     posts <- withConn $ \conn -> PostView.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
-    showPage $ Pages.index posts
+    showPage ([], "Home") $ Pages.index posts
 
 getAdminLoginPage :: Action ()
 getAdminLoginPage = do
@@ -172,10 +173,13 @@ getPostEditPage = do
     i <- pathParam "postSlug"
     mp <- withConn $ \conn -> PostView.get conn i
     case mp of
-        Just p -> showPage $ Pages.edit p
+        Just p -> do
+            let title = if PostView.postTitle p == "" then "Untitled" else PostView.postTitle p
+                breadcrumbs = ([("Home", "/admin")], title)
+            showPage breadcrumbs $ Pages.edit p
         Nothing -> do
             status NT.notFound404
-            showPage $ Pages.notFound "Unknown post id"
+            showPage ([], "Not Found") $ Pages.notFound "Unknown post id"
 
 getPostPreviewPage :: Action ()
 getPostPreviewPage = do
@@ -183,10 +187,13 @@ getPostPreviewPage = do
     i <- pathParam "postSlug"
     mp <- withConn $ \conn -> PostView.get conn i
     case mp of
-        Just p -> showPage $ Pages.preview False p
+        Just p -> do
+            let title = if PostView.postTitle p == "" then "Untitled" else PostView.postTitle p
+                breadcrumbs = ([("Home", "/admin")], title)
+            showPage breadcrumbs $ Pages.preview False p
         Nothing -> do
             status NT.notFound404
-            showPage $ Pages.notFound "Unknown post id"
+            showPage ([], "Not Found") $ Pages.notFound "Unknown post id"
 
 getYearPostsPage :: Action ()
 getYearPostsPage = do
@@ -195,4 +202,4 @@ getYearPostsPage = do
     page <- queryParamMaybe "page"
     perPage <- queryParamMaybe "perPage"
     posts <- withConn $ \conn -> PostView.year conn y (fromMaybe 0 page) (fromMaybe 10 perPage)
-    showPage $ Pages.index posts
+    showPage ([("Home", "/admin")], toText y) $ Pages.index posts

@@ -6,6 +6,7 @@ module Madf.Blog.Admin.Pages.Template
 import Data.Text
 import Lucid
 import Madf.Blog.Time
+import Madf.Blog.Admin.Nav qualified as Nav
 
 base :: Year -> Html () -> Html ()
 base y b = doctypehtml_ $ do
@@ -27,10 +28,9 @@ base y b = doctypehtml_ $ do
         title :: Text
         title = "Madf's blog - Administrative interface"
 
-template :: Year -> Html () -> Html ()
-template y b = base y $ do
-            nav_ $ do
-                h3_ "Home"
+template :: Nav.Breadcrumbs -> Year -> Html () -> Html ()
+template (path, current) y b = base y $ do
+            Nav.render path current
             main_ $ do
                 section_ b
                 aside_ "Contents"

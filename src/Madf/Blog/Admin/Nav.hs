@@ -1,4 +1,4 @@
-module Madf.Blog.Admin.Render.Nav
+module Madf.Blog.Admin.Nav
     ( render
     , Breadcrumb
     , Breadcrumbs

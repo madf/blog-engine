@@ -6,7 +6,7 @@ import Lucid
 import Madf.Blog.Time
 import Madf.Blog.Contents qualified as Contents
 import Madf.Blog.Admin.Render.Contents qualified as Contents
-import Madf.Blog.Admin.Render.Nav qualified as Nav
+import Madf.Blog.Admin.Nav qualified as Nav
 
 template :: Nav.Breadcrumbs -> Year -> Contents.Contents -> Html () -> Html ()
 template (path, current) y cnt b = doctypehtml_ $ do
