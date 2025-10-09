@@ -35,7 +35,9 @@ publishPost conn dd p = do
     checkCreateDir pd
     cy <- currentYear
     cnt <- Contents.get conn (timeToYear $ Post.postCreated p) 0 maxBound
-    renderToFile fp (Render.template cy cnt $ preview True p)
+    let title = if Post.postTitle p == "" then "Untitled" else Post.postTitle p
+        breadcrumbs = ([("Home", "/blog"), (toText year, "/blog/" <> toText year)], title)
+    renderToFile fp (Render.template breadcrumbs cy cnt $ preview True p)
     where
         year = timeToYear (Post.postCreated p)
         pd = dd <> "/" <> toText year
@@ -47,7 +49,7 @@ regenIndex conn conf dd = do
     cy <- currentYear
     cnt <- Contents.get conn cy 0 maxBound
     posts <- Post.list conn 0 (numPosts $ main conf)
-    renderToFile fp (Render.template cy cnt $ Render.index cy posts)
+    renderToFile fp (Render.template ([], "Home") cy cnt $ Render.index cy posts)
     where
         fp = unpack (dd <> "/index.html")
 
@@ -57,7 +59,8 @@ regenYearIndex conn dd year = do
     cy <- currentYear
     cnt <- Contents.get conn year 0 maxBound
     posts <- Post.year conn year 0 maxBound
-    renderToFile fp (Render.template cy cnt $ Render.yearIndex posts)
+    let breadcrumbs = ([("Home", "/blog")], toText year)
+    renderToFile fp (Render.template breadcrumbs cy cnt $ Render.yearIndex posts)
     where
         yd = dd <> "/" <> toText year
         fp = unpack (yd <> "/index.html")

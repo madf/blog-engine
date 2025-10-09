@@ -41,6 +41,7 @@ library
       Madf.Blog.Admin.Render.Contents
       Madf.Blog.Admin.Render.Excerpt
       Madf.Blog.Admin.Render.Index
+      Madf.Blog.Admin.Render.Nav
       Madf.Blog.Admin.Render.Template
       Madf.Blog.Admin.Routes
       Madf.Blog.App

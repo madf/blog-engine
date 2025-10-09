@@ -6,9 +6,10 @@ import Lucid
 import Madf.Blog.Time
 import Madf.Blog.Contents qualified as Contents
 import Madf.Blog.Admin.Render.Contents qualified as Contents
+import Madf.Blog.Admin.Render.Nav qualified as Nav
 
-template :: Year -> Contents.Contents -> Html () -> Html ()
-template y cnt b = doctypehtml_ $ do
+template :: Nav.Breadcrumbs -> Year -> Contents.Contents -> Html () -> Html ()
+template (path, current) y cnt b = doctypehtml_ $ do
     head_ $ do
         title_ "Madf's blog"
         link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/styles.css"]
@@ -19,8 +20,7 @@ template y cnt b = doctypehtml_ $ do
         with div_ [class_ "container"] $ do
             header_ $ do
                 h1_ "Madf's blog"
-            nav_ $ do
-                h3_ "Home"
+            Nav.render path current
             main_ $ do
                 section_ b
                 aside_ $ do
@@ -29,3 +29,4 @@ template y cnt b = doctypehtml_ $ do
             footer_ $ do
                 if unYear y == 2025 then p_ "Copyright 2025 Maksym Mamontov"
                                     else p_ ("Copyright 2025-" <> toHtml y <> " Maksym Mamontov")
+

@@ -23,7 +23,7 @@ render p = with div_ [class_ "excerpt"] $ do
         postURL = Post.url p <> ".html"
 
 excerpt :: Post.Post -> Html ()
-excerpt p = case ((firstImage $ Post.postContent p), (firstTextBlock $ Post.postContent p)) of
+excerpt p = case (firstImage $ Post.postContent p, firstTextBlock $ Post.postContent p) of
     (Nothing, Nothing)    -> return ()
     (Just image, Nothing) -> div_ $ previewImage image
     (Nothing, Just t)     -> p_ $ toHtml t
