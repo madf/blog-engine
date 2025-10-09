@@ -7,8 +7,7 @@ import Database.SQLite.Simple
 import Lucid
 import Madf.Blog.Admin.Pages.Preview
 import Madf.Blog.Admin.Render.Template qualified as Render
-import Madf.Blog.Admin.Render.Index qualified as RenderIndex
-import Madf.Blog.Admin.Render.YearIndex qualified as RenderYear
+import Madf.Blog.Admin.Render.Index qualified as Render
 import Madf.Blog.Post.View qualified as Post
 import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Config
@@ -48,7 +47,7 @@ regenIndex conn conf dd = do
     cy <- currentYear
     cnt <- Contents.get conn cy 0 maxBound
     posts <- Post.list conn 0 (numPosts $ main conf)
-    renderToFile fp (Render.template cy cnt $ RenderIndex.index cy posts)
+    renderToFile fp (Render.template cy cnt $ Render.index cy posts)
     where
         fp = unpack (dd <> "/index.html")
 
@@ -58,7 +57,7 @@ regenYearIndex conn dd year = do
     cy <- currentYear
     cnt <- Contents.get conn year 0 maxBound
     posts <- Post.year conn year 0 maxBound
-    renderToFile fp (Render.template cy cnt $ RenderYear.yearIndex posts)
+    renderToFile fp (Render.template cy cnt $ Render.yearIndex posts)
     where
         yd = dd <> "/" <> toText year
         fp = unpack (yd <> "/index.html")

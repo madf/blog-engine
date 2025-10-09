@@ -1,19 +1,16 @@
-module Madf.Blog.Admin.Render.YearIndex
-    ( yearIndex
+module Madf.Blog.Admin.Render.Excerpt
+    ( render
     ) where
 
+import Data.Text (Text, pack)
+import Data.Maybe
 import Lucid
 import Madf.Blog.Post.View qualified as Post
 import Madf.Blog.Image qualified as Image
 import Madf.Blog.Time
-import Data.Text (Text, pack)
-import Data.Maybe
 
-yearIndex :: [Post.Post] -> Html ()
-yearIndex = mapM_ renderExcerpt
-
-renderExcerpt :: Post.Post -> Html ()
-renderExcerpt p = with div_ [class_ "excerpt"] $ do
+render :: Post.Post -> Html ()
+render p = with div_ [class_ "excerpt"] $ do
     with a_ [href_ (Post.url p), class_ "post-header"] $ do
         with div_ [class_ "date-box"] $ do
             let (m, d) = splitDate (Post.postCreated p)
@@ -23,15 +20,13 @@ renderExcerpt p = with div_ [class_ "excerpt"] $ do
     div_ (excerpt p)
 
 excerpt :: Post.Post -> Html ()
-excerpt p = excerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)
-
-excerpt' :: Maybe Image.Image -> Maybe Text -> Html ()
-excerpt' Nothing Nothing = return ()
-excerpt' (Just image) Nothing = div_ $ previewImage image
-excerpt' Nothing (Just t) = p_ $ toHtml t
-excerpt' (Just image) (Just t) = do
-    div_ $ previewImage image
-    p_ $ toHtml t
+excerpt p = case ((firstImage $ Post.postContent p), (firstTextBlock $ Post.postContent p)) of
+    (Nothing, Nothing)    -> return ()
+    (Just image, Nothing) -> div_ $ previewImage image
+    (Nothing, Just t)     -> p_ $ toHtml t
+    (Just image, Just t)  -> do
+        div_ $ previewImage image
+        p_ $ toHtml t
 
 previewImage :: Image.Image -> Html ()
 previewImage i = img_ [src_ (Image.imagePreviewURL i), width_ (pack . show $ Image.imagePreviewWidth i), height_ (pack . show $ Image.imagePreviewHeight i), alt_ (Image.imageCaption i)]
