@@ -21,12 +21,12 @@ body {
 header {
   padding: 20px;
   text-align: center;
-  border-bottom: 1px solid black;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 footer {
   padding: 20px;
-  border-top: 1px solid black;
+  border-top: 1px solid #e5e7eb;
 }
 
 nav {
@@ -53,6 +53,12 @@ nav h3 {
 .breadcrumb:hover {
   color: #1d4ed8;
   text-decoration: underline;
+}
+
+.breadcrumb:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .breadcrumb-separator {
@@ -111,7 +117,7 @@ main {
   max-width: 200px;
   padding-left: 20px;
   padding-right: 20px;
-  border-left: 1px dotted black;
+  border-left: 1px dotted #9ca3af;
 }
 
 .error-message {
@@ -302,6 +308,16 @@ main {
   transition: all 0.2s;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 .link-btn {
   padding: 10px 15px;
   border: none;
@@ -411,6 +427,12 @@ main {
 
 .text-block-preview {
   margin-top: 20px;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.text-block-preview p {
+  margin-bottom: 1em;
 }
 
 .text-block {
@@ -797,7 +819,7 @@ main {
   .container aside {
     max-width: 100%;
     border-left: none;
-    border-top: 1px dotted black;
+    border-top: 1px dotted #9ca3af;
     padding-top: 20px;
     margin-top: 20px;
   }
