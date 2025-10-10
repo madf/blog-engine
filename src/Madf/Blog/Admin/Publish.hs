@@ -1,5 +1,6 @@
 module Madf.Blog.Admin.Publish
     ( publish
+    , regenerateAll
     ) where
 
 import Data.Text (Text, unpack)
@@ -23,25 +24,12 @@ publish conn conf slug = do
     case mp of
         Nothing -> throwBlogError (PostNotFound $ "No such post: " <> Slug.unSlug slug)
         Just p -> do
-            publishPost conn dd p
+            let year = timeToYear $ Post.postCreated p
+            regenYearPosts conn dd year
             regenIndex conn conf dd
-            regenYearIndex conn dd (timeToYear $ Post.postCreated p)
-            regenContents conn dd
+            regenYearIndex conn dd year
     where
         dd = destDir . main $ conf
-
-publishPost :: Connection -> Text -> Post.Post -> IO ()
-publishPost conn dd p = do
-    checkCreateDir pd
-    cy <- currentYear
-    cnt <- Contents.get conn (timeToYear $ Post.postCreated p) 0 maxBound
-    let title = if Post.postTitle p == "" then "Untitled" else Post.postTitle p
-        breadcrumbs = ([("Home", "/blog"), (toText year, "/blog/" <> toText year)], title)
-    renderToFile fp (Render.template breadcrumbs cy cnt $ preview True p)
-    where
-        year = timeToYear (Post.postCreated p)
-        pd = dd <> "/" <> toText year
-        fp = unpack (pd <> "/" <> Slug.unSlug (Post.postSlug p) <> ".html")
 
 regenIndex :: Connection -> Config -> Text -> IO ()
 regenIndex conn conf dd = do
@@ -65,5 +53,41 @@ regenYearIndex conn dd year = do
         yd = dd <> "/" <> toText year
         fp = unpack (yd <> "/index.html")
 
-regenContents :: Connection -> Text -> IO ()
-regenContents = undefined
+regenYearPosts :: Connection -> Text -> Year -> IO ()
+regenYearPosts conn dd year = do
+    checkCreateDir yd
+    cy <- currentYear
+    cnt <- Contents.get conn year 0 maxBound
+    posts <- Post.year conn year 0 maxBound
+    mapM_ (publishPostInYear cy cnt) posts
+    where
+        yd = dd <> "/" <> toText year
+        publishPostInYear cy cnt p = do
+            let title = if Post.postTitle p == "" then "Untitled" else Post.postTitle p
+                breadcrumbs = ([("Home", "/blog"), (toText year, "/blog/" <> toText year)], title)
+                fp = unpack (yd <> "/" <> Slug.unSlug (Post.postSlug p) <> ".html")
+            renderToFile fp (Render.template breadcrumbs cy cnt $ preview True p)
+
+regenerateAll :: Connection -> Config -> IO ()
+regenerateAll conn conf = do
+    cy <- currentYear
+    allPosts <- Post.list conn 0 maxBound
+    -- Regenerate all posts
+    mapM_ (regenPost conn dd cy) allPosts
+    -- Regenerate all year index pages
+    years <- Post.years conn
+    mapM_ (regenYearIndex conn dd) years
+    -- Regenerate main index
+    regenIndex conn conf dd
+    where
+        dd = destDir . main $ conf
+
+regenPost :: Connection -> Text -> Year -> Post.Post -> IO ()
+regenPost conn dd cy p = do
+    let year = timeToYear $ Post.postCreated p
+    checkCreateDir (dd <> "/" <> toText year)
+    cnt <- Contents.get conn year 0 maxBound
+    let title = if Post.postTitle p == "" then "Untitled" else Post.postTitle p
+        breadcrumbs = ([("Home", "/blog"), (toText year, "/blog/" <> toText year)], title)
+        fp = unpack (dd <> "/" <> toText year <> "/" <> Slug.unSlug (Post.postSlug p) <> ".html")
+    renderToFile fp (Render.template breadcrumbs cy cnt $ preview True p)

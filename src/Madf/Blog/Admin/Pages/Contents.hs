@@ -5,6 +5,7 @@ module Madf.Blog.Admin.Pages.Contents
 import Lucid
 import Madf.Blog.Contents
 import Madf.Blog.Post.View qualified as Post
+import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Time
 import Madf.Blog.ToText
 
@@ -24,6 +25,6 @@ renderYearLink y = with a_ [href_ url] (toHtml y)
 
 renderPost :: Post.Post -> Html ()
 renderPost p = li_ $ do
-    with a_ [href_ ("/admin/posts/" <> toText (Post.postId p))] $ case Post.postTitle p of
+    with a_ [href_ ("/admin/posts/" <> Slug.unSlug (Post.postSlug p))] $ case Post.postTitle p of
         "" -> toHtml (timeToText $ Post.postCreated p)
         t  -> toHtml t

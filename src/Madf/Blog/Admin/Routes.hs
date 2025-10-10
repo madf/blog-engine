@@ -31,6 +31,7 @@ import Madf.Blog.Env qualified as Env
 import Madf.Blog.JWT qualified as JWT
 import Madf.Blog.Time
 import Madf.Blog.ToText
+import Madf.Blog.Contents qualified as Contents
 import Lucid
 
 routes :: App ()
@@ -121,6 +122,10 @@ postAPI = do
         conf <- askConfig
         r <- withConn $ \conn -> mapM (Image.upload conn conf i) fs
         json r
+    post   "/admin/api/post/regenerate" $ do
+        Auth.requireNoRedirect
+        conf <- askConfig
+        withConn $ \conn -> liftIO $ regenerateAll conn conf
 
 lucid :: Html a -> Action ()
 lucid = html . renderText
@@ -128,7 +133,8 @@ lucid = html . renderText
 showPage :: ([(DT.Text, DT.Text)], DT.Text) -> Html () -> Action ()
 showPage breadcrumbs p = do
     cy <- liftIO currentYear
-    lucid $ Pages.template breadcrumbs cy p
+    cnt <- withConn $ \conn -> Contents.get conn cy 0 maxBound
+    lucid $ Pages.template breadcrumbs cy cnt p
 
 jsonError :: DT.Text -> Action ()
 jsonError = json
