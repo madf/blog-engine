@@ -14,18 +14,19 @@ index :: [Post.Post] -> Html ()
 index posts = do
     div_ [class_ "add-buttons"] $ do
         with button_ [class_ "btn btn-primary", id_ "regenerate-all-btn"] "Regenerate All Pages"
-    ul_ $ do
-        mapM_ renderExcerpt posts
+    mapM_ renderExcerpt posts
 
 renderExcerpt :: Post.Post -> Html ()
-renderExcerpt p = with li_ [class_ "excerpt"] $ do
-    h4_ $ do
-        with a_ [href_ url] (toHtml $ Post.postTitle p)
-    div_ $ do
-        with a_ [href_ url] $ do
-            div_ $ small_ (toHtml $ "Created: " <> timeToText (Post.postCreated p))
-            div_ $ small_ (toHtml $ "Updated: " <> maybe "never" timeToText (Post.postUpdated p))
+renderExcerpt p = with div_ [class_ "excerpt"] $ do
+    with a_ [href_ url, class_ "post-header"] $ do
+        with div_ [class_ "date-box"] $ do
+            let (m, d) = splitDate (Post.postCreated p)
+            span_ $ toHtml m
+            span_ $ toHtml d
+        h2_ $ toHtml (Post.postTitle p)
     excerpt p
+    with div_ [class_ "post-footer"] $ do
+        with a_ [href_ url, class_ "btn btn-secondary btn-small"] "Edit"
     where
         url = "/admin/posts/" <> Slug.unSlug (Post.postSlug p)
 
