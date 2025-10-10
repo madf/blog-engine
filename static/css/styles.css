@@ -33,7 +33,6 @@ nav {
   padding: 15px 20px;
   background: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 10px;
 }
 
 nav h3 {
@@ -71,6 +70,8 @@ nav h3 {
 main {
   padding-left: 10px;
   padding-right: 10px;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 .m-l-auto {
