@@ -12,7 +12,8 @@ template :: Nav.Breadcrumbs -> Year -> Contents.Contents -> Html () -> Html ()
 template (path, current) y cnt b = doctypehtml_ $ do
     head_ $ do
         title_ "Madf's blog"
-        link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/styles.css"]
+        link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/common.css"]
+        link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/public.css"]
         link_ [rel_ "icon", type_ "image/x-icon", href_ "/favicon.png"]
         meta_ [charset_ "UTF-8"]
         meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1.0"]

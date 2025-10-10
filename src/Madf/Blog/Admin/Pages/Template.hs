@@ -14,7 +14,8 @@ base :: Year -> Html () -> Html ()
 base y b = doctypehtml_ $ do
     head_ $ do
         title_ (toHtml title)
-        link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/styles.css"]
+        link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/common.css"]
+        link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/admin.css"]
         link_ [rel_ "icon", type_ "image/x-icon", href_ "/favicon.png"]
         meta_ [charset_ "UTF-8"]
         meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1.0"]
