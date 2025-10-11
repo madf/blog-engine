@@ -18,17 +18,19 @@ index posts = do
 
 renderExcerpt :: Post.Post -> Html ()
 renderExcerpt p = with div_ [class_ "excerpt"] $ do
-    with a_ [href_ url, class_ "post-header"] $ do
+    with div_ [class_ "post-header"] $ do
         with div_ [class_ "date-box"] $ do
             let (m, d) = splitDate (Post.postCreated p)
             span_ $ toHtml m
             span_ $ toHtml d
-        h2_ $ toHtml (Post.postTitle p)
+        h2_ $ with a_ [href_ previewURL] $ toHtml (Post.postTitle p)
+        with a_ [href_ editURL, class_ "link-btn btn-secondary m-l-auto"] (span_ [class_ "icon"] "✎")
     excerpt p
-    with div_ [class_ "post-footer"] $ do
-        with a_ [href_ url, class_ "btn btn-secondary btn-small"] "Edit"
+    with a_ [href_ previewURL] "Read more..."
     where
-        url = "/admin/posts/" <> Slug.unSlug (Post.postSlug p)
+        slug = Slug.unSlug (Post.postSlug p)
+        previewURL = "/admin/posts/" <> slug
+        editURL = "/admin/posts/" <> slug <> "/edit"
 
 excerpt :: Post.Post -> Html ()
 excerpt p = div_ $ excerpt' (firstImage $ Post.postContent p) (firstTextBlock $ Post.postContent p)
