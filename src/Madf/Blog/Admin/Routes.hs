@@ -5,7 +5,6 @@ module Madf.Blog.Admin.Routes
 import Control.Monad
 import Control.Monad.Reader
 import Data.Text qualified as DT
-import Data.Text.Lazy qualified as DTL
 import Data.Text.Encoding
 import Data.Maybe
 import Data.Aeson qualified as DA
@@ -14,7 +13,6 @@ import Web.Scotty.Cookie
 import Network.HTTP.Types qualified as NT
 import Madf.Blog.App
 import Madf.Blog.Config qualified as Config
-import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Image qualified as Image
 import Madf.Blog.Post.Storage qualified as PostStorage
 import Madf.Blog.Post.View qualified as PostView
@@ -43,8 +41,6 @@ pages :: App ()
 pages = do
     get  "/admin" getAdminIndexPage
     get  "/admin/login" getAdminLoginPage
-    post "/admin/login" handleAdminLogin
-    post "/admin/posts/new" createNewPost
     get  "/admin/posts/:postSlug" getPostPreviewPage
     get  "/admin/posts/:postSlug/edit" getPostEditPage
     get  "/admin/years/:year" getYearPostsPage
@@ -64,6 +60,7 @@ loginAPI = do
         if Login.verify (Config.admin conf) l p then do
             jwtEnv <- lift $ asks Env.jwt
             t <- liftIO $ JWT.issue jwtEnv
+            setAuthCookie t
             json t
              else status NT.unauthorized401 >> jsonError "Bad credentials"
     post "/admin/api/token/renew" $ do
@@ -73,36 +70,40 @@ loginAPI = do
             Just t -> do
                 jwtEnv <- lift $ asks Env.jwt
                 nt <- liftIO $ JWT.renew jwtEnv t
-                setCookie $ defaultSetCookie { setCookieName = "authtoken", setCookieValue = encodeUtf8 nt, setCookiePath = Just "/" }
+                setAuthCookie nt
                 json nt
 
 imageAPI :: App ()
 imageAPI = do
     get    "/admin/api/image/:imageId" $ do
-        Auth.requireNoRedirect
+        Auth.requireHeader
         iid <- pathParam "imageId"
         r <- withConn (`Image.get` iid)
         json r
     put    "/admin/api/image/:imageId" $ do
-        Auth.requireNoRedirect
+        Auth.requireHeader
         i <- pathParam "imageId"
         c <- formParam "caption"
         r <- withConn  $ \conn -> Image.updateCaption conn i c
         json r
     delete "/admin/api/image/:imageId" $ do
-        Auth.requireNoRedirect
+        Auth.requireHeader
         iid <- pathParam "imageId"
         withConn (`Image.delete` iid)
 
 postAPI :: App ()
 postAPI = do
+    post   "/admin/api/posts" $ do
+        Auth.requireHeader
+        r <- withConn $ \conn -> PostStorage.create conn
+        json r
     get    "/admin/api/post/:postSlug" $ do
-        Auth.requireNoRedirect
+        Auth.requireHeader
         slug <- pathParam "postSlug"
         r <- withConn $ \conn -> PostView.get conn slug
         json r
     put    "/admin/api/post/:postSlug" $ do
-        Auth.requireNoRedirect
+        Auth.requireHeader
         s <- pathParam "postSlug"
         t <- formParam "title"
         c <- formParam "content"
@@ -116,14 +117,14 @@ postAPI = do
                 unless d (liftIO $ publish conn conf s)
             Left m -> status NT.badRequest400 >> json m
     post   "/admin/api/post/:postSlug/image" $ do
-        Auth.requireNoRedirect
+        Auth.requireHeader
         i <- pathParam "postSlug"
         fs <- files
         conf <- askConfig
         r <- withConn $ \conn -> mapM (Image.upload conn conf i) fs
         json r
     post   "/admin/api/post/regenerate" $ do
-        Auth.requireNoRedirect
+        Auth.requireHeader
         conf <- askConfig
         withConn $ \conn -> liftIO $ regenerateAll conn conf
 
@@ -139,9 +140,24 @@ showPage breadcrumbs p = do
 jsonError :: DT.Text -> Action ()
 jsonError = json
 
+setAuthCookie :: DT.Text -> Action ()
+setAuthCookie token =
+    setCookie $ defaultSetCookie
+        { setCookieName = "authtoken"
+        , setCookieValue = encodeUtf8 token
+        , setCookiePath = Just "/"
+        , setCookieSecure = True
+        , setCookieSameSite = Just sameSiteLax
+        -- Note: NOT HttpOnly - JavaScript needs to read this cookie
+        -- to send Authorization header for API calls. This is safe because:
+        -- 1. Cookie used for page navigation (automatic by browser)
+        -- 2. JavaScript reads cookie and sends as Authorization header for API
+        -- 3. API is CSRF-immune because cross-origin requests cannot add Authorization header
+        }
+
 getAdminIndexPage :: Action ()
 getAdminIndexPage = do
-    Auth.require
+    Auth.requireCookie
     page <- queryParamMaybe "page"
     perPage <- queryParamMaybe "perPage"
     posts <- withConn $ \conn -> PostView.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
@@ -153,29 +169,9 @@ getAdminLoginPage = do
     cy <- liftIO currentYear
     lucid $ Pages.login cy me
 
-handleAdminLogin :: Action ()
-handleAdminLogin = do
-    f <- queryParamMaybe "from"
-    l <- formParam "login"
-    p <- formParam "password"
-    conf <- askConfig
-    if Login.verify (Config.admin conf) l p
-        then do
-            jwtEnv <- lift $ asks Env.jwt
-            t <- liftIO $ JWT.issue jwtEnv
-            setCookie $ defaultSetCookie { setCookieName = "authtoken", setCookieValue = encodeUtf8 t, setCookiePath = Just "/" }
-            redirect (fromMaybe "/admin" f)
-        else Auth.redirectUnauthorized (DTL.toStrict <$> f) "Bad credentials"
-
-createNewPost :: Action ()
-createNewPost = do
-    Auth.require
-    r <- withConn $ \conn -> PostStorage.create conn
-    redirect $ "/admin/edit/" <> (DTL.fromStrict . Slug.unSlug . PostStorage.postSlug $ r)
-
 getPostEditPage :: Action ()
 getPostEditPage = do
-    Auth.require
+    Auth.requireCookie
     i <- pathParam "postSlug"
     mp <- withConn $ \conn -> PostView.get conn i
     case mp of
@@ -189,7 +185,7 @@ getPostEditPage = do
 
 getPostPreviewPage :: Action ()
 getPostPreviewPage = do
-    Auth.require
+    Auth.requireCookie
     i <- pathParam "postSlug"
     mp <- withConn $ \conn -> PostView.get conn i
     case mp of
@@ -203,7 +199,7 @@ getPostPreviewPage = do
 
 getYearPostsPage :: Action ()
 getYearPostsPage = do
-    Auth.require
+    Auth.requireCookie
     y <- pathParam "year"
     page <- queryParamMaybe "page"
     perPage <- queryParamMaybe "perPage"

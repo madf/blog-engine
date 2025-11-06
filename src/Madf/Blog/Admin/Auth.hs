@@ -1,6 +1,6 @@
 module Madf.Blog.Admin.Auth
-    ( require
-    , requireNoRedirect
+    ( requireCookie
+    , requireHeader
     , redirectUnauthorized
     ) where
 
@@ -18,29 +18,47 @@ import qualified Madf.Blog.JWT as JWT
 
 data Result = Ok | Error Text deriving (Show)
 
-check :: ActionT Env.EnvM Result
-check = do
+-- Check Authorization header (for API)
+checkHeader :: ActionT Env.EnvM Result
+checkHeader = do
+    mAuthHeader <- header "Authorization"
+    case mAuthHeader of
+        Nothing -> return $ Error "Missing Authorization header"
+        Just authHeader ->
+            case stripPrefix "Bearer " (DTL.toStrict authHeader) of
+                Just token -> checkToken token
+                Nothing -> return $ Error "Invalid Authorization header format"
+
+-- Check cookie (for pages)
+checkCookie :: ActionT Env.EnvM Result
+checkCookie = do
     mt <- getCookie "authtoken"
     case mt of
         Nothing -> return $ Error "Not authorized"
-        Just t -> do
-            jwtEnv <- lift $ asks Env.jwt
-            r <- liftIO $ JWT.check jwtEnv t
-            case r of
-                JWT.Error e -> return $ Error e
-                JWT.Ok -> return Ok
+        Just t -> checkToken t
 
-require :: ActionT Env.EnvM ()
-require = do
-    r <- check
+-- Common token validation logic
+checkToken :: Text -> ActionT Env.EnvM Result
+checkToken token = do
+    jwtEnv <- lift $ asks Env.jwt
+    r <- liftIO $ JWT.check jwtEnv token
+    case r of
+        JWT.Error e -> return $ Error e
+        JWT.Ok -> return Ok
+
+-- For HTML pages - redirects to login on failure
+requireCookie :: ActionT Env.EnvM ()
+requireCookie = do
+    r <- checkCookie
     p <- decodeUtf8 . rawPathInfo <$> request
     case r of
         Ok -> return ()
         Error e -> redirectUnauthorized (Just p) e
 
-requireNoRedirect :: ActionT Env.EnvM ()
-requireNoRedirect = do
-    r <- check
+-- For API endpoints - returns 401 JSON on failure
+requireHeader :: ActionT Env.EnvM ()
+requireHeader = do
+    r <- checkHeader
     case r of
         Ok -> return ()
         Error e -> status NT.unauthorized401 >> json e

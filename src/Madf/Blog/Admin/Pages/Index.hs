@@ -13,6 +13,7 @@ import Madf.Blog.Time
 index :: [Post.Post] -> Html ()
 index posts = do
     div_ [class_ "add-buttons"] $ do
+        with button_ [class_ "btn btn-primary", id_ "new-post-btn"] "New Post"
         with button_ [class_ "btn btn-primary", id_ "regenerate-all-btn"] "Regenerate All Pages"
     mapM_ renderExcerpt posts
 

@@ -1,3 +1,5 @@
+import { authFetch } from './api.js'
+
 let blockIdCounter = 0;
 let post = undefined;
 
@@ -74,10 +76,10 @@ const handleImageUpload = async (blockIdx, files) => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch(`/admin/api/post/${post.slug}/image`, {
+      // Use authFetch to add Authorization header
+      const response = await authFetch(`/admin/api/post/${post.slug}/image`, {
         method: 'POST',
-        body: formData,
-        credentials: 'include' // Include session cookie
+        body: formData
       });
 
       if (!response.ok) {
@@ -129,10 +131,10 @@ const saveImageCaption = async (blockIdx, idx) => {
         const formData = new FormData();
         formData.append('caption', image.caption);
 
-        const response = await fetch(`/admin/api/image/${image.id}`, {
+        // Use authFetch to add Authorization header
+        const response = await authFetch(`/admin/api/image/${image.id}`, {
           method: 'PUT',
-          body: formData,
-          credentials: 'include' // Include session cookie
+          body: formData
         });
 
         if (!response.ok) {
@@ -154,8 +156,9 @@ const deleteImage = async (blockIdx, idx) => {
   const img = block.content[idx];
   if (block && img) {
     try {
-      resp = await fetch(`/admin/api/image/${img.id}`, {
-        method: 'DELETE',
+      // Use authFetch to add Authorization header
+      resp = await authFetch(`/admin/api/image/${img.id}`, {
+        method: 'DELETE'
       });
       if (!resp.ok) {
         throw new Error(`Failed to delete image: ${resp.statusText}`);
@@ -345,10 +348,10 @@ const savePost = async () => {
     formData.append('reason', document.getElementById('reason').value);
     formData.append('draft', document.getElementById('is_draft').checked);
 
-    const response = await fetch(`/admin/api/post/${post.slug}`, {
+    // Use authFetch to add Authorization header
+    const response = await authFetch(`/admin/api/post/${post.slug}`, {
       method: 'PUT',
-      body: formData,
-      credentials: 'include' // Include session cookie
+      body: formData
     });
 
     if (!response.ok) {

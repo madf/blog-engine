@@ -2,6 +2,7 @@ module Madf.Blog.Admin.Pages.Edit
     ( edit
     ) where
 
+import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Data.ByteString.Lazy (toStrict)
 import Data.Aeson (encode)
@@ -31,4 +32,4 @@ edit p = do
                                   else input_ [name_ "is_draft", id_ "is_draft", type_ "checkbox"]
             with a_ [id_ "preview-button", class_ "link-btn btn-secondary m-l-auto", href_ ("/admin/posts/" <> Slug.unSlug (Post.postSlug p))] "Preview"
             with button_ [id_ "save-button", class_ "btn btn-primary", type_ "button"] "Save"
-    with (script_ "") [src_ "/js/edit.js"]
+    script_ [src_ "/js/edit.js", type_ "module"] ("" :: Text)
