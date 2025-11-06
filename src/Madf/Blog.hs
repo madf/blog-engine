@@ -9,7 +9,6 @@ import Data.Text (unpack)
 import Web.Scotty.Trans as WS
 import Network.Wai (Middleware)
 import Network.Wai.Middleware.Static
-import Network.Wai.Middleware.Cors
 import Network.Wai.Handler.Warp (Settings, defaultSettings, setPort, setHost, setGracefulShutdownTimeout, setInstallShutdownHandler)
 import System.Posix.Signals (installHandler, Handler(..), sigTERM, sigINT)
 import Madf.Blog.App
@@ -44,10 +43,7 @@ routes :: Middleware -> App ()
 routes logger = do
     middleware logger
     middleware $ staticPolicy (noDots >-> addBase "static")
-    middleware $ cors $ const $ Just simpleCorsResourcePolicy
-        { corsRequestHeaders = "Authorization":simpleHeaders
-        , corsMethods = "PUT":"DELETE":simpleMethods
-        }
+    -- CORS not needed: admin UI and API are same-origin
     options (regex ".*") $ return ()
     Admin.routes
     Public.routes

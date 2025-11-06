@@ -67,7 +67,6 @@ library:
     - unix
     - unliftio-core
     - wai
-    - wai-cors
     - wai-extra
     - wai-middleware-static
     - warp
