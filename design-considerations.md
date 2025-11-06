@@ -19,7 +19,7 @@ Public part is static HTML, administrative part (aka blog editor) is server-rend
 A post is a list of blocks. Each block has a type. The simplest block is a text block which represnts a paragraph of text. The other type is a carousel block, which represents a carousel of images. There might be other type, for example a code block with code highlighting, but they are not implemented yet. Blocks are rendered in the same order as they are stored. Carousels are rendered with image previews, smaller versions of the real images. Each preview is a link to the real image.
 
 A post can have 3 types of visibility:
- * public - posts are rendered in static HTML and are linked from contents;
+ * public - posts are rendered in static HTML and are linked from indices;
  * unlisted - posts are rendered in static HTML, but no links are provided (they can only be accessed by provate links);
  * private - posts are NOT rendered in static HTML and are only available from the blog editor.
 
@@ -44,18 +44,17 @@ Image duplicates in different posts are permitted.
 Public part file structure:
 ```
  / -+- index.html
-    +- contents.html
     +- <year> -+- index.html
                +- <slug>-<id>.html
                +- <slug>-<id> -+- <image>.jpg
                                +- preview-<image>.jpg
 ```
 
-## Main, contents and year contents
+## Main and year contents
 
-Main `index.html` is a blog front page with a number of post exeprts, rendered from the most recent on top. A post exerpt contains a post date, post title, first image from the first carousel block, if any and a part of the first text block, if any. The date and the title (maybe the whole exerpt?) is a link to the post itself.
+Main `index.html` is a blog front page with a number of post exeprts, rendered from the most recent on top. A post exerpt contains a post date, post title, first image from the first carousel block, if any and a part of the first text block, if any. The date and the title (maybe the whole exerpt?) is a link to the post itself. At the bottom of the main page there is a link to the current year index.
 
-`contents.html` provides access to the posts of the last year and links to the other year posts. It is identical to the last year `index.html` and contains titles of all the year's posts grouped by months. If there is no post title, the date is used. Also there are links to `index.html` of each year. Year `index.html` follows the same scheme - posts for the year grouped by months, links to the other years.
+Year `index.html` follows the same scheme, but contains all the posts of the year.
 
 ## Post page
 
@@ -65,9 +64,9 @@ The post page starts from the post date and title, with the blocks following bel
 
 ## Authorization
 
-The system has a single user which is authenticated by login and password. Upon successfull authentication, a JWT token is issued for accessping admin pages and API. For the pages the token is stored in a dedicated cookie, and for the API access the token is provided in the request 'Authorization' header.
+The system has a single user which is authenticated by login and password. Upon successfull authentication, a JWT token is issued for accessing admin pages and API. For the pages the token is stored in a dedicated cookie, and for the API access the token is provided in the request 'Authorization' header.
 
-Login and password are stored in the configuration file. The login is stored in clear text and the password is store as an Argon2 hash.
+Login and password are stored in the configuration file. The login is stored in clear text and the password is stored as an Argon2 hash.
 
 Token signing and verification is preformed by an auto-generated key (or key pair) which is stored in memory. Optionally it can be stored permanently in a file to persist between system restarts, but I don't know if it makes any sense.
 
@@ -76,13 +75,16 @@ Token signing and verification is preformed by an auto-generated key (or key pai
 The administrative part consists of the following pages:
  * login page;
  * index page;
+ * year index page;
  * post preview page;
  * post edit page;
  * new post pseudo-page.
 
 The login page is a simple login/password form. Unauthorized users are redirected to the login page if they try to access admin pages. Upon a successfull login, the user is redirected back to the original page, or to the index page.
 
-The index page shows a list of recent posts, ordered from the most recent to the least recent. Each post is represented by an exerpt which contains the date, the title, the first picture from the first carousel block and a shortened first block of text. The link from the each exerpt goes to the preview page.
+The index page shows a list of recent posts, ordered from the most recent to the least recent. Each post is represented by an exerpt which contains the date, the title, the first picture from the first carousel block and a shortened first block of text. The link from the each exerpt goes to the preview page. There is also a dedicated button that redirects to the post edit page. This index supports pagination by query params 'page' and 'perPage'. If not specified, they default to page 0 and 10 posts per page.
+
+Same applies to the year index.
 
 The preview page shows the post in the same way as it is rendered (or would be rendered, for private posts) in the static public part, except that it has an 'Edit' button which redirects to the edit page.
 
@@ -100,10 +102,11 @@ Two endpoints:
 
 ### Post API
 
-Three endpoints:
+Four endpoints:
  * get a post by a slug, returns the post;
- * update a post by a slug, returns nothing, optionally renders the post and regenerates the index, contents and years;
- * add an image to a post, identified by a slug, returns the image metadata.
+ * update a post by a slug, returns nothing, optionally renders the post and regenerates the index, and years;
+ * add an image to a post, identified by a slug, returns the image metadata;
+ * re-render all generated files.
 
 ### Image API
 
