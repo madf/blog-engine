@@ -25,6 +25,7 @@ performUpdates :: Connection -> Int -> IO ()
 performUpdates conn sv
     | sv < 2    = updateToV2 conn >> performUpdates conn 2
     | sv < 3    = updateToV3 conn >> performUpdates conn 3
+    | sv < 4    = updateToV4 conn >> performUpdates conn 4
     | otherwise = return ()
 
 updateToV2 :: Connection -> IO ()
@@ -46,19 +47,33 @@ updateToV3 conn = withTransaction conn $ do
             slug <- Slug.withId 8 i
             return (slug, i)
 
+updateToV4 :: Connection -> IO ()
+updateToV4 conn = withTransaction conn $ do
+    execute_ conn "CREATE INDEX idx_posts_slug ON posts(slug)"
+    execute_ conn "CREATE INDEX idx_posts_created ON posts(created)"
+    execute_ conn "CREATE INDEX idx_images_post_id ON images(post_id)"
+    execute_ conn "CREATE INDEX idx_images_file_hash ON images(file_hash)"
+    execute_ conn "UPDATE info SET schema_version = 4"
+
 createInfoTable :: Connection -> IO ()
 createInfoTable conn = do
     execute_ conn q
-    execute_ conn "INSERT INTO info (schema_version) VALUES (1)"
+    execute_ conn "INSERT INTO info (schema_version) VALUES (4)"
     where
         q = "CREATE TABLE info (schema_version INTEGER NOT NULL) STRICT"
 
 createPostsTable :: Connection -> IO ()
-createPostsTable conn = execute_ conn q
+createPostsTable conn = do
+    execute_ conn q
+    execute_ conn "CREATE INDEX idx_posts_slug ON posts(slug)"
+    execute_ conn "CREATE INDEX idx_posts_created ON posts(created)"
     where
         q = "CREATE TABLE posts (id INTEGER PRIMARY KEY, slug TEXT, title TEXT NOT NULL, content BLOB NOT NULL, type TEXT NOT NULL, reason TEXT NOT NULL, is_draft INT NOT NULL, created TEXT NOT NULL, updated TEXT) STRICT"
 
 createImagesTable :: Connection -> IO ()
-createImagesTable conn = execute_ conn q
+createImagesTable conn = do
+    execute_ conn q
+    execute_ conn "CREATE INDEX idx_images_post_id ON images(post_id)"
+    execute_ conn "CREATE INDEX idx_images_file_hash ON images(file_hash)"
     where
         q = "CREATE TABLE images (id INTEGER PRIMARY KEY, post_id INTEGER NOT NULL, caption TEXT NOT NULL, file_name TEXT NOT NULL, file_size INTEGER NOT NULL, file_hash INT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, mime_type TEXT NOT NULL, url TEXT NOT NULL, preview_file_name TEXT NOT NULL, preview_file_size INTEGER NOT NULL, preview_width INTEGER NOT NULL, preview_height INTEGER NOT NULL, preview_url TEXT NOT NULL, created TEXT NOT NULL, updated TEXT, ref_count INT NOT NULL, FOREIGN KEY (post_id) REFERENCES posts (id)) STRICT"
