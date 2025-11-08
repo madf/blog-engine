@@ -14,7 +14,8 @@ import Test.Hspec.Wai
 
 main :: IO ()
 main = do
-    let conf = Config.defaultConfig{ Config.db = Config.DBConfig ":memory:" }
+    -- Use shared in-memory database so all connections see the same data
+    let conf = Config.defaultConfig{ Config.db = Config.DBConfig "file::memory:?cache=shared" }
     env <- Env.create conf False
     withResource (Env.pool env) DB.check
     hspec (spec env)
