@@ -1,4 +1,4 @@
-import { authFetch } from './api.js'
+import { updatePost, uploadImage, updateImageCaption, deleteImage } from './api.js'
 
 let blockIdCounter = 0;
 let post = undefined;
@@ -76,17 +76,7 @@ const handleImageUpload = async (blockIdx, files) => {
       const formData = new FormData();
       formData.append('image', file);
 
-      // Use authFetch to add Authorization header
-      const response = await authFetch(`/admin/api/post/${post.slug}/image`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      const result = await uploadImage(post.slug, formData);
       if (result.length !== 1) {
         throw new Error('Image upload returned multiple results');
       }
@@ -112,7 +102,7 @@ const handleImageUpload = async (blockIdx, files) => {
   }
 }
 
-const updateImageCaption = (blockIdx, idx, caption) => {
+const setImageCaption = (blockIdx, idx, caption) => {
   const block = post.content[blockIdx];
   if (block) {
     const image = block.content[idx];
@@ -131,15 +121,7 @@ const saveImageCaption = async (blockIdx, idx) => {
         const formData = new FormData();
         formData.append('caption', image.caption);
 
-        // Use authFetch to add Authorization header
-        const response = await authFetch(`/admin/api/image/${image.id}`, {
-          method: 'PUT',
-          body: formData
-        });
-
-        if (!response.ok) {
-          throw new Error(`Upload failed: ${response.statusText}`);
-        }
+        await updateImageCaption(image.id, formData);
       } catch (error) {
         console.error('Image caption update failed:', error);
       }
@@ -147,7 +129,7 @@ const saveImageCaption = async (blockIdx, idx) => {
   }
 };
 
-const deleteImage = async (blockIdx, idx) => {
+const deleteImageHandler = async (blockIdx, idx) => {
   const block = post.content[blockIdx];
   if (!block) {
     console.log(`Unknown block idx: {blockIdx}`);
@@ -156,13 +138,7 @@ const deleteImage = async (blockIdx, idx) => {
   const img = block.content[idx];
   if (block && img) {
     try {
-      // Use authFetch to add Authorization header
-      resp = await authFetch(`/admin/api/image/${img.id}`, {
-        method: 'DELETE'
-      });
-      if (!resp.ok) {
-        throw new Error(`Failed to delete image: ${resp.statusText}`);
-      }
+      await deleteImage(img.id);
       block.content.splice(idx, 1);
     } catch (error) {
       console.log(error);
@@ -236,7 +212,7 @@ const createImageCaption = (blockIdx, img, idx) => {
   ici.type = 'text';
   ici.placeholder = 'Image caption...';
   ici.value = img.caption;
-  ici.addEventListener('input', e => { updateImageCaption(blockIdx, idx, e.currentTarget.value); });
+  ici.addEventListener('input', e => { setImageCaption(blockIdx, idx, e.currentTarget.value); });
   ic.appendChild(ici);
   const icb = createButton('btn btn-small btn-secondary', () => { saveImageCaption(blockIdx, idx); }, '💾')
   ic.appendChild(icb);
@@ -252,7 +228,7 @@ const createImageControls = (blockIdx, img, idx) => {
   ic.appendChild(fn);
   ic.appendChild(createButton('btn btn-small btn-secondary', () => { moveImageLeft(blockIdx, idx); }, '<'));
   ic.appendChild(createButton('btn btn-small btn-secondary', () => { moveImageRight(blockIdx, idx); }, '>'));
-  ic.appendChild(createButton('btn btn-small btn-danger', () => { deleteImage(blockIdx, idx); }, 'x'));
+  ic.appendChild(createButton('btn btn-small btn-danger', () => { deleteImageHandler(blockIdx, idx); }, 'x'));
   return ic;
 };
 
@@ -348,15 +324,7 @@ const savePost = async () => {
     formData.append('reason', document.getElementById('reason').value);
     formData.append('draft', document.getElementById('is_draft').checked);
 
-    // Use authFetch to add Authorization header
-    const response = await authFetch(`/admin/api/post/${post.slug}`, {
-      method: 'PUT',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
-    }
+    await updatePost(post.slug, formData);
 
     window.sessionStorage.setItem('post', JSON.stringify(post));
   } catch (error) {

@@ -1,4 +1,4 @@
-document.getElementById('login-form').addEventListener('submit', async (e) => {
+const submitHandler = async e => {
   e.preventDefault();
 
   const submitBtn = document.getElementById('submit-btn');
@@ -32,4 +32,6 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Login';
   }
-});
+};
+
+document.getElementById('login-form').addEventListener('submit', submitHandler);

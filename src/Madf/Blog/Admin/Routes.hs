@@ -93,16 +93,17 @@ imageAPI = do
 
 postAPI :: App ()
 postAPI = do
+    get    "/admin/api/posts" getAllPosts
     post   "/admin/api/posts" $ do
         Auth.requireHeader
         r <- withConn $ \conn -> PostStorage.create conn
         json r
-    get    "/admin/api/post/:postSlug" $ do
+    get    "/admin/api/posts/:postSlug" $ do
         Auth.requireHeader
         slug <- pathParam "postSlug"
         r <- withConn $ \conn -> PostView.get conn slug
         json r
-    put    "/admin/api/post/:postSlug" $ do
+    put    "/admin/api/posts/:postSlug" $ do
         Auth.requireHeader
         s <- pathParam "postSlug"
         t <- formParam "title"
@@ -116,14 +117,14 @@ postAPI = do
                 PostView.update conn s t bs (PostStorage.makeType ty r) d
                 unless d (liftIO $ publish conn conf s)
             Left m -> status NT.badRequest400 >> json m
-    post   "/admin/api/post/:postSlug/image" $ do
+    post   "/admin/api/posts/:postSlug/image" $ do
         Auth.requireHeader
         i <- pathParam "postSlug"
         fs <- files
         conf <- askConfig
         r <- withConn $ \conn -> mapM (Image.upload conn conf i) fs
         json r
-    post   "/admin/api/post/regenerate" $ do
+    post   "/admin/api/posts/regenerate" $ do
         Auth.requireHeader
         conf <- askConfig
         withConn $ \conn -> liftIO $ regenerateAll conn conf
@@ -205,3 +206,11 @@ getYearPostsPage = do
     perPage <- queryParamMaybe "perPage"
     posts <- withConn $ \conn -> PostView.year conn y (fromMaybe 0 page) (fromMaybe 10 perPage)
     showPage ([("Home", "/admin")], toText y) $ Pages.index posts
+
+getAllPosts :: Action ()
+getAllPosts = do
+    Auth.requireHeader
+    page <- fromMaybe 0 <$> queryParamMaybe "page"
+    perPage <- fromMaybe 10 <$> queryParamMaybe "perPage"
+    ps <- withConn $ \conn -> PostView.list conn page perPage
+    json ps

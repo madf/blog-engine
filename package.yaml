@@ -21,7 +21,6 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-- text
 
 ghc-options:
 - -Wall
@@ -45,6 +44,7 @@ library:
   source-dirs: src
 
   dependencies:
+    - text
     - aeson
     - bytestring
     - config-ini
@@ -84,6 +84,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - mbe
+    - text
 
 tests:
   mbe-test:
@@ -97,4 +98,5 @@ tests:
     - mbe
     - hspec
     - hspec-wai
-    - hspec-wai-json
+    - scotty
+    - resource-pool
