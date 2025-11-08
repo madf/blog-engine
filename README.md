@@ -1,5 +1,7 @@
 # MBE
 
+[![CI](https://github.com/madf/blog-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/madf/blog-engine/actions/workflows/ci.yml)
+
 ## Name
 
 'MBE' stands for 'Madf's Blog Engine'.
