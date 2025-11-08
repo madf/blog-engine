@@ -1,4 +1,5 @@
 import { updatePost, uploadImage, updateImageCaption, deleteImage } from './api.js'
+import { redirectToLogin } from './util.js'
 
 let blockIdCounter = 0;
 let post = undefined;
@@ -89,6 +90,10 @@ const handleImageUpload = async (blockIdx, files) => {
         needSave = true;
       }
     } catch (error) {
+      if (error.code === 401) {
+        redirectToLogin();
+        return;
+      }
       console.error('Upload failed:', error);
       // Remove failed upload from UI
       block.content = block.content.filter(img => img.file_name !== file.name || img.uploading);
@@ -123,6 +128,10 @@ const saveImageCaption = async (blockIdx, idx) => {
 
         await updateImageCaption(image.id, formData);
       } catch (error) {
+        if (error.code === 401) {
+          redirectToLogin();
+          return;
+        }
         console.error('Image caption update failed:', error);
       }
     }
@@ -141,7 +150,12 @@ const deleteImageHandler = async (blockIdx, idx) => {
       await deleteImage(img.id);
       block.content.splice(idx, 1);
     } catch (error) {
-      console.log(error);
+      if (error.code === 401) {
+        redirectToLogin();
+        return;
+      }
+      console.error('Delete image failed:', error);
+      alert(`Failed to delete image: ${error.message}`);
     }
     savePost();
     renderBlocks();
@@ -328,7 +342,12 @@ const savePost = async () => {
 
     window.sessionStorage.setItem('post', JSON.stringify(post));
   } catch (error) {
-    console.log(error);
+    if (error.code === 401) {
+      redirectToLogin();
+      return;
+    }
+    console.error('Save post failed:', error);
+    alert(`Failed to save post: ${error.message}`);
   }
 };
 

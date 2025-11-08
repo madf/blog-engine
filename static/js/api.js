@@ -1,3 +1,16 @@
+class ApiError extends Error {
+  constructor(message, code, details) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = code;
+    this.details = details;
+  }
+
+  isAuthError() {
+    return this.code === 401 || this.code === 403;
+  }
+}
+
 const getAuthToken = () => {
   const match = document.cookie.match(/authtoken=([^;]+)/);
   return match ? match[1] : null;
@@ -6,7 +19,7 @@ const getAuthToken = () => {
 export const authFetch = async (url, options = {}) => {
   const token = getAuthToken();
   if (!token) {
-    throw new Error('No authentication token found');
+    throw new ApiError('No authentication token found', 401, 'Unauthorized');
   }
 
   const headers = options.headers || {};
@@ -21,16 +34,20 @@ export const authFetch = async (url, options = {}) => {
 
 export const createPost = async () => {
   const response = await authFetch('/admin/api/posts', { method: 'POST' });
-  if (response.ok) {
-    return await response.json();
-  } else {
-    return null;
+
+  if (!response.ok) {
+    throw new ApiError('Failed to create post', response.status, response.statusText);
   }
+
+  return await response.json();
 };
 
 export const regeneratePosts = async () => {
   const response = await authFetch('/admin/api/posts/regenerate', { method: 'POST' });
-  return response.ok;
+
+  if (!response.ok) {
+    throw new ApiError('Failed to regenerate posts', response.status, response.statusText);
+  }
 };
 
 export const updatePost = async (slug, data) => {
@@ -40,7 +57,7 @@ export const updatePost = async (slug, data) => {
   });
 
   if (!response.ok) {
-    throw new Error(`Upload failed: ${response.statusText}`);
+    throw new ApiError('Failed to update post', response.status, response.statusText);
   }
 };
 
@@ -51,7 +68,7 @@ export const uploadImage = async (slug, data) => {
   });
 
   if (!response.ok) {
-    throw new Error(`Upload failed: ${response.statusText}`);
+    throw new ApiError('Failed to upload image', response.status, response.statusText);
   }
 
   return await response.json();
@@ -64,7 +81,7 @@ export const updateImageCaption = async (id, data) => {
   });
 
   if (!response.ok) {
-    throw new Error(`Upload failed: ${response.statusText}`);
+    throw new ApiError('Failed to update caption', response.status, response.statusText);
   }
 };
 
@@ -72,7 +89,8 @@ export const deleteImage = async id => {
   const response = await authFetch(`/admin/api/image/${id}`, {
     method: 'DELETE'
   });
+
   if (!response.ok) {
-    throw new Error(`Failed to delete image: ${response.statusText}`);
+    throw new ApiError('Failed to delete image', response.status, response.statusText);
   }
 };

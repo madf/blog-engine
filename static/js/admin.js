@@ -1,4 +1,5 @@
 import { createPost, regeneratePosts } from './api.js'
+import { redirectToLogin } from './util.js'
 
 const newPostHandler = async e => {
   const newPostBtn = e.target;
@@ -9,18 +10,15 @@ const newPostHandler = async e => {
 
   try {
     const post = await createPost();
-
-    if (post) {
-      window.location.href = `/admin/posts/${post.slug}/edit`;
+    window.location.href = `/admin/posts/${post.slug}/edit`;
+  } catch (err) {
+    if (err.code === 401) {
+      redirectToLogin();
     } else {
-      alert('Failed to create post');
+      alert(`Error: ${err.message}`);
       newPostBtn.disabled = false;
       newPostBtn.textContent = 'New Post';
     }
-  } catch (err) {
-    alert('Error: ' + err);
-    newPostBtn.disabled = false;
-    newPostBtn.textContent = 'New Post';
   }
 };
 
@@ -36,23 +34,20 @@ const regenerateHandler = async e => {
   regenerateBtn.textContent = 'Regenerating...';
 
   try {
-    const r = await regeneratePosts();
-
-    if (r) {
-      regenerateBtn.textContent = 'Done!';
-      setTimeout(() => {
-        regenerateBtn.disabled = false;
-        regenerateBtn.textContent = 'Regenerate All Pages';
-      }, 2000);
+    await regeneratePosts();
+    regenerateBtn.textContent = 'Done!';
+    setTimeout(() => {
+      regenerateBtn.disabled = false;
+      regenerateBtn.textContent = 'Regenerate All Pages';
+    }, 2000);
+  } catch(err) {
+    if (err.code === 401) {
+      redirectToLogin();
     } else {
-      alert('Failed to regenerate pages');
+      alert(`Error: ${err.message}`);
       regenerateBtn.disabled = false;
       regenerateBtn.textContent = 'Regenerate All Pages';
     }
-  } catch(err) {
-      alert('Error: ' + err);
-      regenerateBtn.disabled = false;
-      regenerateBtn.textContent = 'Regenerate All Pages';
   }
 };
 
