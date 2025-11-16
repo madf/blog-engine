@@ -58,6 +58,7 @@ library
       Madf.Blog.JWT
       Madf.Blog.Logger
       Madf.Blog.Post.Storage
+      Madf.Blog.Post.Type
       Madf.Blog.Post.View
       Madf.Blog.Public.Routes
       Madf.Blog.Slug

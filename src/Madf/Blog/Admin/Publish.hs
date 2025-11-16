@@ -11,6 +11,7 @@ import Madf.Blog.Admin.Render.Template qualified as Render
 import Madf.Blog.Admin.Render.Index qualified as Render
 import Madf.Blog.Post.View qualified as Post
 import Madf.Blog.Slug qualified as Slug
+import Madf.Blog.Post.Type
 import Madf.Blog.Config
 import Madf.Blog.Files
 import Madf.Blog.Time
@@ -37,7 +38,8 @@ regenIndex conn conf dd = do
     cy <- currentYear
     cnt <- Contents.get conn cy 0 maxBound
     posts <- Post.list conn 0 (numPosts $ main conf)
-    renderToFile fp (Render.template ([], "Home") cy cnt $ Render.index cy posts)
+    let toRender = filter (\p -> shouldList (Post.postType p) && not (Post.postIsDraft p)) posts
+    renderToFile fp (Render.template ([], "Home") cy cnt $ Render.index cy toRender)
     where
         fp = unpack (dd <> "/index.html")
 
@@ -47,8 +49,9 @@ regenYearIndex conn dd year = do
     cy <- currentYear
     cnt <- Contents.get conn year 0 maxBound
     posts <- Post.year conn year 0 maxBound
+    let toRender = filter (\p -> shouldList (Post.postType p) && not (Post.postIsDraft p)) posts
     let breadcrumbs = ([("Home", "/blog")], toText year)
-    renderToFile fp (Render.template breadcrumbs cy cnt $ Render.yearIndex posts)
+    renderToFile fp (Render.template breadcrumbs cy cnt $ Render.yearIndex toRender)
     where
         yd = dd <> "/" <> toText year
         fp = unpack (yd <> "/index.html")
@@ -72,8 +75,9 @@ regenerateAll :: Connection -> Config -> IO ()
 regenerateAll conn conf = do
     cy <- currentYear
     allPosts <- Post.list conn 0 maxBound
+    let toRegen = filter (\p -> shouldRender (Post.postType p) && not (Post.postIsDraft p)) allPosts
     -- Regenerate all posts
-    mapM_ (regenPost conn dd cy) allPosts
+    mapM_ (regenPost conn dd cy) toRegen
     -- Regenerate all year index pages
     years <- Post.years conn
     mapM_ (regenYearIndex conn dd) years

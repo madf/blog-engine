@@ -1,6 +1,7 @@
 module Madf.Blog.Post.View
     ( Post (..)
     , Block (..)
+    , Type (..)
     , get
     , update
     , list
@@ -17,6 +18,7 @@ import Database.SQLite.Simple
 import Madf.Blog.Ids
 import Madf.Blog.ToText
 import Madf.Blog.Time
+import Madf.Blog.Post.Type
 import qualified Madf.Blog.Post.Storage as Storage
 import qualified Madf.Blog.Image as Image
 import qualified Madf.Blog.Slug as Slug
@@ -28,7 +30,7 @@ data Post = Post
     , postUpdated :: !(Maybe UTCTime)
     , postTitle   :: !Text
     , postContent :: ![Block]
-    , postType    :: !Storage.Type
+    , postType    :: !Type
     , postIsDraft :: !Bool
     } deriving (Show)
 
@@ -106,7 +108,7 @@ get conn slug = do
         Just p -> Just <$> fromStoragePost conn p
         Nothing -> return Nothing
 
-update :: Connection -> Slug.Type -> Text -> [Block] -> Storage.Type -> Bool -> IO ()
+update :: Connection -> Slug.Type -> Text -> [Block] -> Type -> Bool -> IO ()
 update conn slug t bs = Storage.update conn slug t (toStorageBlocks bs)
 
 list :: Connection -> Int -> Int -> IO [Post]
