@@ -36,10 +36,9 @@ regenIndex :: Connection -> Config -> Text -> IO ()
 regenIndex conn conf dd = do
     checkCreateDir dd
     cy <- currentYear
-    cnt <- Contents.get conn cy 0 maxBound
+    cnt <- getCnt conn cy
     posts <- Post.list conn 0 (numPosts $ main conf)
-    let toRender = filter (\p -> shouldList (Post.postType p) && not (Post.postIsDraft p)) posts
-    renderToFile fp (Render.template ([], "Home") cy cnt $ Render.index cy toRender)
+    renderToFile fp (Render.template ([], "Home") cy cnt $ Render.index cy (toRender posts))
     where
         fp = unpack (dd <> "/index.html")
 
@@ -47,11 +46,10 @@ regenYearIndex :: Connection -> Text -> Year -> IO ()
 regenYearIndex conn dd year = do
     checkCreateDir yd
     cy <- currentYear
-    cnt <- Contents.get conn year 0 maxBound
+    cnt <- getCnt conn year
     posts <- Post.year conn year 0 maxBound
-    let toRender = filter (\p -> shouldList (Post.postType p) && not (Post.postIsDraft p)) posts
     let breadcrumbs = ([("Home", "/blog")], toText year)
-    renderToFile fp (Render.template breadcrumbs cy cnt $ Render.yearIndex toRender)
+    renderToFile fp (Render.template breadcrumbs cy cnt $ Render.yearIndex (toRender posts))
     where
         yd = dd <> "/" <> toText year
         fp = unpack (yd <> "/index.html")
@@ -60,7 +58,7 @@ regenYearPosts :: Connection -> Text -> Year -> IO ()
 regenYearPosts conn dd year = do
     checkCreateDir yd
     cy <- currentYear
-    cnt <- Contents.get conn year 0 maxBound
+    cnt <- getCnt conn year
     posts <- Post.year conn year 0 maxBound
     mapM_ (publishPostInYear cy cnt) posts
     where
@@ -90,8 +88,16 @@ regenPost :: Connection -> Text -> Year -> Post.Post -> IO ()
 regenPost conn dd cy p = do
     let year = timeToYear $ Post.postCreated p
     checkCreateDir (dd <> "/" <> toText year)
-    cnt <- Contents.get conn year 0 maxBound
+    cnt <- getCnt conn year
     let title = if Post.postTitle p == "" then "Untitled" else Post.postTitle p
         breadcrumbs = ([("Home", "/blog"), (toText year, "/blog/" <> toText year)], title)
         fp = unpack (dd <> "/" <> toText year <> "/" <> Slug.unSlug (Post.postSlug p) <> ".html")
     renderToFile fp (Render.template breadcrumbs cy cnt $ preview True p)
+
+toRender :: [Post.Post] -> [Post.Post]
+toRender = filter (\p -> shouldList (Post.postType p) && not (Post.postIsDraft p))
+
+getCnt :: Connection -> Year -> IO Contents.Contents
+getCnt conn cy = do
+    cnt <- Contents.get conn cy 0 maxBound
+    return $ cnt{ Contents.contPosts = toRender (Contents.contPosts cnt) }
