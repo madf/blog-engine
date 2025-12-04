@@ -23,7 +23,7 @@ module Madf.Blog.Image
 import GHC.Generics
 import Data.Text
 import Data.Text.Encoding
-import Data.Time
+import Data.Time (getCurrentTime, UTCTime)
 import Data.ByteString.Lazy qualified as BS
 import Data.Int
 import Data.Maybe
@@ -224,12 +224,14 @@ delete conn iid = do
             case mfs of
                 Nothing -> return ()
                 Just (sfn, spn) -> do
-                    removeFiles sfn spn
+                    removeIfExists sfn
+                    removeIfExists spn
                     execute conn "DELETE FROM images WHERE id = ?" (Only iid)
 
 updateRC :: Connection -> ImageId -> Int -> IO ()
 updateRC conn iid rc = execute conn "UPDATE images SET ref_count = ? WHERE id = ?" (rc, iid)
 
+{-
 scaleToHeight :: Int -> CP.Image CP.PixelRGBA8 -> CP.Image CP.PixelRGBA8
 scaleToHeight dh img = CPE.scaleBilinear (w * dh `div` h) dh img
     where
@@ -246,22 +248,36 @@ createPreview jq dh pfp md img = do
             Just CP.SourceJpeg -> CP.saveJpgImage jq (unpack pfp) simg
             Just CP.SourcePng  -> CP.savePngImage (unpack pfp) simg
             v                  -> throwBlogError $ ImageError $ "Unsupported image format: " <> pack (show v)
+-}
+
+data PostInfo = PostInfo
+    { piId      :: !PostId
+    , piSlug    :: !Slug.Type
+    , piYear    :: !Year
+    }
+
+getPostInfo :: Connection -> Slug.Type -> IO (Maybe PostInfo)
+getPostInfo conn slug = do
+    minf <- listToMaybe <$> query conn "SELECT id, created FROM posts WHERE slug = ?" (Only slug)
+    case minf of
+        Nothing -> return Nothing
+        Just (i, c) -> return $ Just (PostInfo i slug (timeToYear c))
 
 upload :: Connection -> Config -> Slug.Type -> File BS.ByteString -> IO Image
 upload conn conf slug (_, fi) = do
-    mpi <- getPostInfo
+    mpi <- getPostInfo conn slug
     case mpi of
-        Nothing -> throwBlogError (PostNotFound $ "Unknown post slug: " <> Slug.unSlug slug)
-        Just (pid, created) -> do
+        Nothing -> throwBlogError (PostNotFound $ "Unknown post slug: " <> toText slug)
+        Just pinf -> do
             let fh = contentHash fi
-            moimg <- findByHash conn pid fh
+            moimg <- findByHash conn (piId pinf) fh
             case moimg of
                 Just img -> do
                     updateRC conn (imageId img) (succ . imageRefCount $ img)
                     return img
-                Nothing -> doUpload fh pid created
+                Nothing -> doUpload conn conf fh pinf fi
+        {-
     where
-        getPostInfo = listToMaybe <$> query conn "SELECT id, created FROM posts WHERE slug = ?" (Only slug)
         fn = decodeUtf8 $ fileName fi
         pn = previewPrefix (images conf) <> fn
         width = CP.dynamicMap CP.imageWidth
@@ -273,6 +289,7 @@ upload conn conf slug (_, fi) = do
         cleanup sfn spn m = do
             removeFiles sfn spn
             throwBlogError (DatabaseError m)
+
         doUpload fh pid created = do
             let std = destDir (main conf) <> "/" <> timeYear created
             let stp = std <> "/" <> Slug.unSlug slug
@@ -291,7 +308,99 @@ upload conn conf slug (_, fi) = do
             case ri of
                 Left e -> cleanup sfn spn e
                 Right i -> return i
+                -}
 
+doUpload :: Connection -> Config -> Int -> PostInfo -> FileInfo BS.ByteString -> IO Image
+doUpload conn conf fh pinf fi = do
+    imageData <- decodeImage fi
+    let mime = decodeUtf8 $ fileContentType fi
+    let previewImage = createPreview conf imageData
+    (imageFileInfo, previewImageFileInfo) <- saveImageAndPreview conf pinf imageData previewImage
+    res <- putInDatabase conn pinf fh mime imageData previewImage (fileSize imageFileInfo) (fileSize previewImageFileInfo)
+    case res of
+        Left e -> do
+            removeIfExists (filePath imageFileInfo)
+            removeIfExists (filePath previewImageFileInfo)
+            throwBlogError (DatabaseError e)
+        Right i -> return i
+
+data ImageData = ImageData
+    { idImage    :: !(CP.Image CP.PixelRGBA8)
+    , idFormat   :: !CP.SourceFormat
+    , idWidth    :: !Int
+    , idHeight   :: !Int
+    , idFileName :: !Text
+    }
+
+decodeImage :: FileInfo BS.ByteString -> IO ImageData
+decodeImage fi = case CP.decodeImageWithMetadata (BS.toStrict $ fileContent fi) of
+    Left e -> throwBlogError (ImageError $ pack e)
+    Right (img, md) -> case CP.lookup CP.Format md of
+        Nothing -> throwBlogError $ ImageError "Unknown image format"
+        Just f -> do
+            let cimg = CP.convertRGBA8 img
+            let w = CP.imageWidth cimg
+            let h = CP.imageHeight cimg
+            let fn = decodeUtf8 $ fileName fi
+            return $ ImageData cimg f w h fn
+
+createPreview :: Config -> ImageData -> ImageData
+createPreview conf idata = ImageData pimg (idFormat idata) (CP.imageWidth pimg) (CP.imageHeight pimg) fn
+    where
+        iconf = images conf
+        dh = previewHeight iconf
+        fn = previewPrefix iconf <> idFileName idata
+        pimg = CPE.scaleBilinear (w * dh `div` h) dh img
+        img = idImage idata
+        w = idWidth idata
+        h = idHeight idata
+
+data ImageFileInfo = ImageFileInfo
+    { filePath :: !Text
+    , fileSize :: !Int64
+    }
+
+saveImageAndPreview :: Config -> PostInfo -> ImageData -> ImageData -> IO (ImageFileInfo, ImageFileInfo)
+saveImageAndPreview conf pinf imageData previewImageData = do
+    checkCreateDir postDir
+    imageFileInfo <- saveImage conf postDir imageData
+    previewImageFileInfo <- saveImage conf postDir previewImageData
+    return (imageFileInfo, previewImageFileInfo)
+    where
+        yearDir = destDir (main conf) <> "/" <> toText (piYear pinf)
+        postDir = yearDir <> "/" <> toText (piSlug pinf)
+
+saveImage :: Config -> Text -> ImageData -> IO ImageFileInfo
+saveImage conf dir idata = do
+    case idFormat idata of
+        CP.SourceJpeg -> CP.saveJpgImage jq (unpack fp) img
+        CP.SourcePng  -> CP.savePngImage (unpack fp) img
+        v             -> throwBlogError $ ImageError ("Unsupported image format: " <> pack (show v))
+    s <- getSize fp
+    return $ ImageFileInfo fp s
+    where
+        jq = jpegQuality $ images conf
+        fp = dir <> "/" <> idFileName idata
+        img = CP.ImageRGBA8 $ idImage idata
+
+putInDatabase :: Connection -> PostInfo -> Int -> Text -> ImageData -> ImageData -> Int64 -> Int64 -> IO (Either Text Image)
+putInDatabase conn pinf fh mime imgData pimgData is pis = do
+    now <- getCurrentTime
+    let info = getInfo now
+    miid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO images (post_id, caption, file_name, file_size, file_hash, width, height, mime_type, url, preview_file_name, preview_file_size, preview_width, preview_height, preview_url, created, updated, ref_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id" info :: IO (Maybe ImageId)
+    case miid of
+        Nothing -> return $ Left "Cannot insert image into the DB"
+        Just iid -> return $ Right (Image iid info)
+    where
+        uBase = "/blog/" <> toText (piYear pinf) <> "/" <> toText (piSlug pinf)
+        url = uBase <> "/" <> idFileName imgData
+        purl = uBase <> "/" <> idFileName pimgData
+        getInfo now = ImageInfo (piId pinf) ""
+                                (idFileName imgData) is fh (idWidth imgData) (idHeight imgData) mime url
+                                (idFileName pimgData) pis (idWidth pimgData) (idHeight pimgData) purl
+                                now Nothing 1
+
+{-
 createImage :: Connection -> ImageInfo -> IO (Either Text Image)
 createImage conn info = do
     miid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO images (post_id, caption, file_name, file_size, file_hash, width, height, mime_type, url, preview_file_name, preview_file_size, preview_width, preview_height, preview_url, created, updated, ref_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id" info :: IO (Maybe ImageId)
@@ -313,6 +422,7 @@ removeFiles :: Text -> Text -> IO ()
 removeFiles sfn spn = do
     removeIfExists sfn
     removeIfExists spn
+-}
 
 findByHash :: Connection -> PostId -> Int -> IO (Maybe Image)
 findByHash conn pid fh = listToMaybe <$> query conn (selectBase <> " WHERE post_id = ? AND file_hash = ?") (pid, fh)
