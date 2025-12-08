@@ -1,5 +1,7 @@
-{-# LANGUAGE DeriveGeneric  #-}
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric    #-}
+{-# LANGUAGE DeriveAnyClass   #-}
+-- For `CP.PixelBaseComponent a` inside a constraint
+{-# LANGUAGE FlexibleContexts #-}
 
 module Madf.Blog.Image
     ( Image (..)
@@ -231,25 +233,6 @@ delete conn iid = do
 updateRC :: Connection -> ImageId -> Int -> IO ()
 updateRC conn iid rc = execute conn "UPDATE images SET ref_count = ? WHERE id = ?" (rc, iid)
 
-{-
-scaleToHeight :: Int -> CP.Image CP.PixelRGBA8 -> CP.Image CP.PixelRGBA8
-scaleToHeight dh img = CPE.scaleBilinear (w * dh `div` h) dh img
-    where
-        w = CP.imageWidth img
-        h = CP.imageHeight img
-
-createPreview :: Int -> Int -> Text -> CP.Metadatas -> CP.DynamicImage -> IO (Int, Int)
-createPreview jq dh pfp md img = do
-    let simg = scaleToHeight dh (CP.convertRGBA8 img)
-    save $ CP.ImageRGBA8 simg
-    return (CP.imageWidth simg, CP.imageHeight simg)
-    where
-        save simg = case CP.lookup CP.Format md of
-            Just CP.SourceJpeg -> CP.saveJpgImage jq (unpack pfp) simg
-            Just CP.SourcePng  -> CP.savePngImage (unpack pfp) simg
-            v                  -> throwBlogError $ ImageError $ "Unsupported image format: " <> pack (show v)
--}
-
 data PostInfo = PostInfo
     { piId      :: !PostId
     , piSlug    :: !Slug.Type
@@ -276,46 +259,15 @@ upload conn conf slug (_, fi) = do
                     updateRC conn (imageId img) (succ . imageRefCount $ img)
                     return img
                 Nothing -> doUpload conn conf fh pinf fi
-        {-
-    where
-        fn = decodeUtf8 $ fileName fi
-        pn = previewPrefix (images conf) <> fn
-        width = CP.dynamicMap CP.imageWidth
-        height = CP.dynamicMap CP.imageHeight
-        dph = previewHeight $ images conf
-        jq = jpegQuality $ images conf
-        mime = decodeUtf8 $ fileContentType fi
-        timeYear = toText . timeToYear
-        cleanup sfn spn m = do
-            removeFiles sfn spn
-            throwBlogError (DatabaseError m)
-
-        doUpload fh pid created = do
-            let std = destDir (main conf) <> "/" <> timeYear created
-            let stp = std <> "/" <> Slug.unSlug slug
-            checkCreateDir stp
-            let sfn = stp <> "/" <> fn
-            let spn = stp <> "/" <> pn
-            (md, img) <- prepareImage sfn fi
-            (pw, ph) <- createPreview jq dph spn md img
-            fs <- getSize sfn
-            ps <- getSize spn
-            now <- getCurrentTime
-            let uBase = "/blog/" <> timeYear created <> "/" <> Slug.unSlug slug
-            let u = uBase <> "/" <> fn
-            let pu = uBase <> "/" <> pn
-            ri <- createImage conn (ImageInfo pid "" fn fs fh (width img) (height img) mime u pn ps pw ph pu now Nothing 1)
-            case ri of
-                Left e -> cleanup sfn spn e
-                Right i -> return i
-                -}
 
 doUpload :: Connection -> Config -> Int -> PostInfo -> FileInfo BS.ByteString -> IO Image
 doUpload conn conf fh pinf fi = do
     imageData <- decodeImage fi
     let mime = decodeUtf8 $ fileContentType fi
     let previewImage = createPreview conf imageData
-    (imageFileInfo, previewImageFileInfo) <- saveImageAndPreview conf pinf imageData previewImage
+    checkCreateDir postDir
+    imageFileInfo <- saveOriginal postDir fi
+    previewImageFileInfo <- saveImage conf postDir previewImage
     res <- putInDatabase conn pinf fh mime imageData previewImage (fileSize imageFileInfo) (fileSize previewImageFileInfo)
     case res of
         Left e -> do
@@ -323,9 +275,12 @@ doUpload conn conf fh pinf fi = do
             removeIfExists (filePath previewImageFileInfo)
             throwBlogError (DatabaseError e)
         Right i -> return i
+    where
+        yearDir = destDir (main conf) <> "/" <> toText (piYear pinf)
+        postDir = yearDir <> "/" <> toText (piSlug pinf)
 
 data ImageData = ImageData
-    { idImage    :: !(CP.Image CP.PixelRGBA8)
+    { idImage    :: !CP.DynamicImage
     , idFormat   :: !CP.SourceFormat
     , idWidth    :: !Int
     , idHeight   :: !Int
@@ -338,37 +293,60 @@ decodeImage fi = case CP.decodeImageWithMetadata (BS.toStrict $ fileContent fi) 
     Right (img, md) -> case CP.lookup CP.Format md of
         Nothing -> throwBlogError $ ImageError "Unknown image format"
         Just f -> do
-            let cimg = CP.convertRGBA8 img
-            let w = CP.imageWidth cimg
-            let h = CP.imageHeight cimg
+            let w = CP.dynamicMap CP.imageWidth img
+            let h = CP.dynamicMap CP.imageHeight img
             let fn = decodeUtf8 $ fileName fi
-            return $ ImageData cimg f w h fn
+            return $ ImageData img f w h fn
 
 createPreview :: Config -> ImageData -> ImageData
-createPreview conf idata = ImageData pimg (idFormat idata) (CP.imageWidth pimg) (CP.imageHeight pimg) fn
+createPreview conf idata = ImageData pimg (idFormat idata) pw ph fn
     where
         iconf = images conf
         dh = previewHeight iconf
         fn = previewPrefix iconf <> idFileName idata
-        pimg = CPE.scaleBilinear (w * dh `div` h) dh img
+        pimg = scaleImage (w * dh `div` h) dh img
         img = idImage idata
         w = idWidth idata
         h = idHeight idata
+        pw = CP.dynamicMap CP.imageWidth pimg
+        ph = CP.dynamicMap CP.imageHeight pimg
+
+-- We need this helper because CPE.scaleBilinear requires pixel base type
+-- to by Bounded and Integral, CP.dynamicMap does not impose such restrictions
+-- and there are pixel types, notable PixelRGBF, that are not Bounded.
+--
+-- For most pixel types we do simple scaling, but for those that are not
+-- Bounded we do conversion.
+scaleImage :: Int -> Int -> CP.DynamicImage -> CP.DynamicImage
+scaleImage w h dImg = case dImg of
+    CP.ImageRGB8   img -> CP.ImageRGB8   $ scale img
+    CP.ImageRGB16  img -> CP.ImageRGB16  $ scale img
+    CP.ImageY8     img -> CP.ImageY8     $ scale img
+    CP.ImageY16    img -> CP.ImageY16    $ scale img
+    CP.ImageY32    img -> CP.ImageY32    $ scale img
+    CP.ImageYA8    img -> CP.ImageYA8    $ scale img
+    CP.ImageYA16   img -> CP.ImageYA16   $ scale img
+    CP.ImageYCbCr8 img -> CP.ImageYCbCr8 $ scale img
+    CP.ImageCMYK8  img -> CP.ImageCMYK8  $ scale img
+    CP.ImageRGBA8  img -> CP.ImageRGBA8  $ scale img
+    CP.ImageRGBA16 img -> CP.ImageRGBA16 $ scale img
+    -- ImageYF, ImageRGBF
+    nonBounded         -> CP.ImageRGBA8  $ scale (CP.convertRGBA8 nonBounded)
+    where
+        scale :: (CP.Pixel a, Bounded (CP.PixelBaseComponent a), Integral (CP.PixelBaseComponent a)) => CP.Image a -> CP.Image a
+        scale = CPE.scaleBilinear w h
 
 data ImageFileInfo = ImageFileInfo
     { filePath :: !Text
     , fileSize :: !Int64
     }
 
-saveImageAndPreview :: Config -> PostInfo -> ImageData -> ImageData -> IO (ImageFileInfo, ImageFileInfo)
-saveImageAndPreview conf pinf imageData previewImageData = do
-    checkCreateDir postDir
-    imageFileInfo <- saveImage conf postDir imageData
-    previewImageFileInfo <- saveImage conf postDir previewImageData
-    return (imageFileInfo, previewImageFileInfo)
-    where
-        yearDir = destDir (main conf) <> "/" <> toText (piYear pinf)
-        postDir = yearDir <> "/" <> toText (piSlug pinf)
+saveOriginal :: Text -> FileInfo BS.ByteString -> IO ImageFileInfo
+saveOriginal dir fi = do
+    let fp = dir <> "/" <> decodeUtf8 (fileName fi)
+    BS.writeFile (unpack fp) (fileContent fi)
+    s <- getSize fp
+    return $ ImageFileInfo fp s
 
 saveImage :: Config -> Text -> ImageData -> IO ImageFileInfo
 saveImage conf dir idata = do
@@ -381,7 +359,7 @@ saveImage conf dir idata = do
     where
         jq = jpegQuality $ images conf
         fp = dir <> "/" <> idFileName idata
-        img = CP.ImageRGBA8 $ idImage idata
+        img = idImage idata
 
 putInDatabase :: Connection -> PostInfo -> Int -> Text -> ImageData -> ImageData -> Int64 -> Int64 -> IO (Either Text Image)
 putInDatabase conn pinf fh mime imgData pimgData is pis = do
@@ -399,30 +377,6 @@ putInDatabase conn pinf fh mime imgData pimgData is pis = do
                                 (idFileName imgData) is fh (idWidth imgData) (idHeight imgData) mime url
                                 (idFileName pimgData) pis (idWidth pimgData) (idHeight pimgData) purl
                                 now Nothing 1
-
-{-
-createImage :: Connection -> ImageInfo -> IO (Either Text Image)
-createImage conn info = do
-    miid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO images (post_id, caption, file_name, file_size, file_hash, width, height, mime_type, url, preview_file_name, preview_file_size, preview_width, preview_height, preview_url, created, updated, ref_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id" info :: IO (Maybe ImageId)
-    case miid of
-        Nothing -> return $ Left "Cannot insert image into the DB"
-        Just iid -> return $ Right (Image iid info)
-
-prepareImage :: Text -> FileInfo BS.ByteString -> IO (CP.Metadatas, CP.DynamicImage)
-prepareImage fn fi = do
-    BS.writeFile (unpack fn) cnt
-    r <- CP.readImageWithMetadata (unpack fn)
-    case r of
-        Left e -> throwBlogError (DatabaseError $ pack e)
-        Right (img, md) -> return (md, img)
-    where
-        cnt = fileContent fi
-
-removeFiles :: Text -> Text -> IO ()
-removeFiles sfn spn = do
-    removeIfExists sfn
-    removeIfExists spn
--}
 
 findByHash :: Connection -> PostId -> Int -> IO (Maybe Image)
 findByHash conn pid fh = listToMaybe <$> query conn (selectBase <> " WHERE post_id = ? AND file_hash = ?") (pid, fh)
