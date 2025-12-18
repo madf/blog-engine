@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveAnyClass   #-}
 -- For `CP.PixelBaseComponent a` inside a constraint
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Madf.Blog.Image
     ( Image (..)
@@ -20,6 +21,7 @@ module Madf.Blog.Image
     , imagePreviewURL
     , upload
     , getMultiple
+    , scaleImage
     ) where
 
 import GHC.Generics
@@ -36,6 +38,8 @@ import Network.Wai.Parse (FileInfo (..))
 import Codec.Picture qualified as CP
 import Codec.Picture.Metadata qualified as CP
 import Codec.Picture.Extra qualified as CPE
+import Graphics.HsExif
+import Madf.Blog.Image.BoxFilter qualified as BF
 import Madf.Blog.Ids
 import Madf.Blog.Config
 import Madf.Blog.Files
@@ -262,6 +266,7 @@ upload conn conf slug (_, fi) = do
 
 doUpload :: Connection -> Config -> Int -> PostInfo -> FileInfo BS.ByteString -> IO Image
 doUpload conn conf fh pinf fi = do
+    let eexif = parseExif $ fileContent fi
     imageData <- decodeImage fi
     let mime = decodeUtf8 $ fileContentType fi
     let previewImage = createPreview conf imageData
@@ -328,13 +333,18 @@ scaleImage w h dImg = case dImg of
     CP.ImageYA16   img -> CP.ImageYA16   $ scale img
     CP.ImageYCbCr8 img -> CP.ImageYCbCr8 $ scale img
     CP.ImageCMYK8  img -> CP.ImageCMYK8  $ scale img
+    CP.ImageCMYK16 img -> CP.ImageCMYK16 $ scale img
     CP.ImageRGBA8  img -> CP.ImageRGBA8  $ scale img
     CP.ImageRGBA16 img -> CP.ImageRGBA16 $ scale img
-    -- ImageYF, ImageRGBF
-    nonBounded         -> CP.ImageRGBA8  $ scale (CP.convertRGBA8 nonBounded)
+    CP.ImageYF     _   -> CP.ImageRGB8   $ scale (CP.convertRGB8 dImg)
+    CP.ImageRGBF   _   -> CP.ImageRGB8   $ scale (CP.convertRGB8 dImg)
     where
-        scale :: (CP.Pixel a, Bounded (CP.PixelBaseComponent a), Integral (CP.PixelBaseComponent a)) => CP.Image a -> CP.Image a
-        scale = CPE.scaleBilinear w h
+        scale :: forall a. (CP.Pixel a, Bounded (CP.PixelBaseComponent a), Integral (CP.PixelBaseComponent a)) => CP.Image a -> CP.Image a
+        scale img = let cs = CP.componentCount (undefined :: a)
+                        ow = CP.imageWidth img
+                        oh = CP.imageHeight img
+                        kSize = oh `div` h
+                    in CPE.scaleBilinear w h . CP.Image ow oh . BF.filterInt kSize ow oh cs . CP.imageData $ img
 
 data ImageFileInfo = ImageFileInfo
     { filePath :: !Text
