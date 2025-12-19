@@ -38,8 +38,9 @@ import Network.Wai.Parse (FileInfo (..))
 import Codec.Picture qualified as CP
 import Codec.Picture.Metadata qualified as CP
 import Codec.Picture.Extra qualified as CPE
-import Graphics.HsExif
+import Graphics.HsExif qualified as EXIF
 import Madf.Blog.Image.BoxFilter qualified as BF
+import Madf.Blog.Image.Orientation qualified as O
 import Madf.Blog.Ids
 import Madf.Blog.Config
 import Madf.Blog.Files
@@ -266,10 +267,9 @@ upload conn conf slug (_, fi) = do
 
 doUpload :: Connection -> Config -> Int -> PostInfo -> FileInfo BS.ByteString -> IO Image
 doUpload conn conf fh pinf fi = do
-    let eexif = parseExif $ fileContent fi
     imageData <- decodeImage fi
     let mime = decodeUtf8 $ fileContentType fi
-    let previewImage = createPreview conf imageData
+    let previewImage = createPreview conf imageData orientation
     checkCreateDir postDir
     imageFileInfo <- saveOriginal postDir fi
     previewImageFileInfo <- saveImage conf postDir previewImage
@@ -283,6 +283,8 @@ doUpload conn conf fh pinf fi = do
     where
         yearDir = destDir (main conf) <> "/" <> toText (piYear pinf)
         postDir = yearDir <> "/" <> toText (piSlug pinf)
+        eexif = EXIF.parseExif $ fileContent fi
+        orientation = either (const Nothing) EXIF.getOrientation eexif
 
 data ImageData = ImageData
     { idImage    :: !CP.DynamicImage
@@ -303,13 +305,14 @@ decodeImage fi = case CP.decodeImageWithMetadata (BS.toStrict $ fileContent fi) 
             let fn = decodeUtf8 $ fileName fi
             return $ ImageData img f w h fn
 
-createPreview :: Config -> ImageData -> ImageData
-createPreview conf idata = ImageData pimg (idFormat idata) pw ph fn
+createPreview :: Config -> ImageData -> Maybe EXIF.ImageOrientation -> ImageData
+createPreview conf idata orientation = ImageData pimg (idFormat idata) pw ph fn
     where
         iconf = images conf
         dh = previewHeight iconf
         fn = previewPrefix iconf <> idFileName idata
-        pimg = scaleImage (w * dh `div` h) dh img
+        pimg = maybeRotate $ scaleImage (w * dh `div` h) dh img
+        maybeRotate = maybe id O.normalize orientation
         img = idImage idata
         w = idWidth idata
         h = idHeight idata
