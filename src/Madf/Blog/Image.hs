@@ -305,13 +305,25 @@ decodeImage fi = case CP.decodeImageWithMetadata (BS.toStrict $ fileContent fi) 
             let fn = decodeUtf8 $ fileName fi
             return $ ImageData img f w h fn
 
+willTranspose :: Maybe EXIF.ImageOrientation -> Bool
+willTranspose = \case
+    Just (EXIF.MirrorRotation EXIF.MinusNinety) -> True
+    Just (EXIF.Rotation EXIF.MinusNinety)       -> True
+    Just (EXIF.MirrorRotation EXIF.Ninety)      -> True
+    Just (EXIF.Rotation EXIF.Ninety)            -> True
+    _                                           -> False
+
 createPreview :: Config -> ImageData -> Maybe EXIF.ImageOrientation -> ImageData
 createPreview conf idata orientation = ImageData pimg (idFormat idata) pw ph fn
     where
         iconf = images conf
         dh = previewHeight iconf
         fn = previewPrefix iconf <> idFileName idata
-        pimg = maybeRotate $ scaleImage (w * dh `div` h) dh img
+        -- Swap target dimensions if image will be transposed
+        (tw, th) = if willTranspose orientation
+                   then (dh, h * dh `div` w)  -- Use h/w aspect ratio for transposed images
+                   else (w * dh `div` h, dh)
+        pimg = maybeRotate $ scaleImage tw th img
         maybeRotate = maybe id O.normalize orientation
         img = idImage idata
         w = idWidth idata

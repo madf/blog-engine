@@ -110,9 +110,7 @@ get conn slug = do
 
 update :: Connection -> Slug.Type -> Text -> [Block] -> Type -> Bool -> IO ()
 update conn slug t bs ty d = withTransaction conn $ do
-    -- Update image captions before saving post content
     mapM_ (updateImageCaptions conn) bs
-    -- Save the post content (with image IDs only)
     Storage.update conn slug t (toStorageBlocks bs) ty d
     where
         updateImageCaptions :: Connection -> Block -> IO ()
