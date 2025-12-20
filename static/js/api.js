@@ -74,17 +74,6 @@ export const uploadImage = async (slug, data) => {
   return await response.json();
 };
 
-export const updateImageCaption = async (id, data) => {
-  const response = await authFetch(`/admin/api/image/${id}`, {
-    method: 'PUT',
-    body: data
-  });
-
-  if (!response.ok) {
-    throw new ApiError('Failed to update caption', response.status, response.statusText);
-  }
-};
-
 export const deleteImage = async id => {
   const response = await authFetch(`/admin/api/image/${id}`, {
     method: 'DELETE'

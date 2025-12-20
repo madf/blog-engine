@@ -1,4 +1,4 @@
-import { updatePost, uploadImage, updateImageCaption, deleteImage } from './api.js'
+import { updatePost, uploadImage, deleteImage } from './api.js'
 import { redirectToLogin } from './util.js'
 
 let blockIdCounter = 0;
@@ -117,27 +117,6 @@ const setImageCaption = (blockIdx, idx, caption) => {
   }
 };
 
-const saveImageCaption = async (blockIdx, idx) => {
-  const block = post.content[blockIdx];
-  if (block) {
-    const image = block.content[idx];
-    if (image) {
-      try {
-        const formData = new FormData();
-        formData.append('caption', image.caption);
-
-        await updateImageCaption(image.id, formData);
-      } catch (error) {
-        if (error.code === 401) {
-          redirectToLogin();
-          return;
-        }
-        console.error('Image caption update failed:', error);
-      }
-    }
-  }
-};
-
 const deleteImageHandler = async (blockIdx, idx) => {
   const block = post.content[blockIdx];
   if (!block) {
@@ -228,8 +207,6 @@ const createImageCaption = (blockIdx, img, idx) => {
   ici.value = img.caption;
   ici.addEventListener('input', e => { setImageCaption(blockIdx, idx, e.currentTarget.value); });
   ic.appendChild(ici);
-  const icb = createButton('btn btn-small btn-secondary', () => { saveImageCaption(blockIdx, idx); }, '💾')
-  ic.appendChild(icb);
   return ic;
 };
 

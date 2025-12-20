@@ -80,12 +80,6 @@ imageAPI = do
         iid <- pathParam "imageId"
         r <- withConn (`Image.get` iid)
         json r
-    put    "/admin/api/image/:imageId" $ do
-        Auth.requireHeader
-        i <- pathParam "imageId"
-        c <- formParam "caption"
-        r <- withConn  $ \conn -> Image.updateCaption conn i c
-        json r
     delete "/admin/api/image/:imageId" $ do
         Auth.requireHeader
         iid <- pathParam "imageId"
