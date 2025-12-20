@@ -46,7 +46,6 @@ const moveBlockDown = idx => {
 }
 
 const updateTextContent = (idx, content) => {
-  console.log(`New text for block ${idx}: ${content}`);
   const block = post.content[idx];
   if (block) {
     block.content = content;
@@ -250,7 +249,6 @@ const createCarouselContent = (block, blockIdx) => {
   const cb = document.createElement('div');
   cb.className = 'carousel-block';
   cb.appendChild(createImageUpload(blockIdx));
-  console.log(`Carousel images: ${block.content.length}`);
   if (block.content.length > 0)
   {
     const ig = document.createElement('div');
