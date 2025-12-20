@@ -7,5 +7,15 @@ and this project adheres to the
 [Haskell Package Versioning Policy](https://pvp.haskell.org/).
 
 ## Unreleased
+### Added
+ - Image filtering before scaling (#9).
+ - Preview rotation according to EXIF data (#8).
 
-## 0.1.0.0 - YYYY-MM-DD
+### Changed
+ - Main post 'Save' button now saves image captions, individual captio 'Save' buttons are removed (#11).
+ - Side contents bar is made wider.
+ - Buttons and dots don't jump on transition from a non-captioned image to a captioned one.
+
+## 0.1.0.0 - 2025-12-02
+### Added
+ - Initial release.
