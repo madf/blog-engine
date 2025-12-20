@@ -12,9 +12,10 @@ and this project adheres to the
  - Preview rotation according to EXIF data (#8).
 
 ### Changed
- - Main post 'Save' button now saves image captions, individual captio 'Save' buttons are removed (#11).
+ - Main post 'Save' button now saves image captions, individual caption 'Save' buttons are removed (#11).
  - Side contents bar is made wider.
  - Buttons and dots don't jump on transition from a non-captioned image to a captioned one.
+ - Removed excessive JS logging.
 
 ## 0.1.0.0 - 2025-12-02
 ### Added
