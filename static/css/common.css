@@ -424,9 +424,9 @@ main {
   color: #717171;
   font-size: 15px;
   padding: 8px 12px;
-  bottom: 8px;
   width: 100%;
   text-align: center;
+  min-height: 40px;
 }
 
 .carousel-fade {
