@@ -49,6 +49,7 @@ library:
     - aeson
     - bytestring
     - config-ini
+    - containers
     - crypton
     - directory
     - fast-logger
@@ -68,6 +69,7 @@ library:
     - time
     - unix
     - unliftio-core
+    - unliftio
     - vector
     - wai
     - wai-extra

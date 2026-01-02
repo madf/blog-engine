@@ -12,6 +12,7 @@ module Madf.Blog.Config.Types
 import Data.Text
 import Data.Password.Argon2
 import qualified Madf.Blog.JWT as JWT
+import qualified Madf.Blog.Job as Job
 
 data Config = Config
     { main    :: !MainConfig
@@ -21,6 +22,7 @@ data Config = Config
     , jwt     :: !JWT.Config
     , logging :: !LoggingConfig
     , server  :: !ServerConfig
+    , job     :: !Job.Config
     } deriving (Show)
 
 data LogDestination = Stdout | File FilePath | Syslog

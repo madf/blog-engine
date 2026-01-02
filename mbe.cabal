@@ -57,6 +57,7 @@ library
       Madf.Blog.Image
       Madf.Blog.Image.BoxFilter
       Madf.Blog.Image.Orientation
+      Madf.Blog.Job
       Madf.Blog.JWT
       Madf.Blog.Logger
       Madf.Blog.Post.Storage
@@ -83,6 +84,7 @@ library
     , base >=4.7 && <5
     , bytestring
     , config-ini
+    , containers
     , crypton
     , directory
     , fast-logger
@@ -102,6 +104,7 @@ library
     , text
     , time
     , unix
+    , unliftio
     , unliftio-core
     , vector
     , wai

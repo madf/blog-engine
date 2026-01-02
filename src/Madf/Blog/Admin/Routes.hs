@@ -27,6 +27,7 @@ import Madf.Blog.Admin.Auth qualified as Auth
 import Madf.Blog.Admin.Login qualified as Login
 import Madf.Blog.Env qualified as Env
 import Madf.Blog.JWT qualified as JWT
+import Madf.Blog.Job qualified as Job
 import Madf.Blog.Time
 import Madf.Blog.ToText
 import Madf.Blog.Contents qualified as Contents
@@ -50,6 +51,7 @@ api = do
     loginAPI
     imageAPI
     postAPI
+    jobAPI
 
 loginAPI :: App ()
 loginAPI = do
@@ -57,12 +59,13 @@ loginAPI = do
         l <- formParam "login"
         p <- formParam "password"
         conf <- askConfig
-        if Login.verify (Config.admin conf) l p then do
-            jwtEnv <- lift $ asks Env.jwt
-            t <- liftIO $ JWT.issue jwtEnv
-            setAuthCookie t
-            json t
-             else status NT.unauthorized401 >> jsonError "Bad credentials"
+        if Login.verify (Config.admin conf) l p
+            then do
+                jwtEnv <- lift $ asks Env.jwt
+                t <- liftIO $ JWT.issue jwtEnv
+                setAuthCookie t
+                json t
+            else status NT.unauthorized401 >> jsonError "Bad credentials"
     post "/admin/api/token/renew" $ do
         mt <- getCookie "authtoken"
         case mt of
@@ -122,6 +125,12 @@ postAPI = do
         Auth.requireHeader
         conf <- askConfig
         withConn $ \conn -> liftIO $ regenerateAll conn conf
+
+jobAPI :: App ()
+jobAPI = do
+    get    "/admin/api/jobs" getAllJobs
+    get    "/admin/api/jobs/:jobId" getJob
+    delete "/admin/api/jobs/:jobId" deleteJob
 
 lucid :: Html a -> Action ()
 lucid = html . renderText
@@ -208,3 +217,26 @@ getAllPosts = do
     perPage <- fromMaybe 10 <$> queryParamMaybe "perPage"
     ps <- withConn $ \conn -> PostView.list conn page perPage
     json ps
+
+getAllJobs :: Action ()
+getAllJobs = do
+    Auth.requireHeader
+    jobEnv <- lift $ asks Env.job
+    jobs <- Job.list jobEnv
+    json jobs
+
+getJob :: Action ()
+getJob = do
+    Auth.requireHeader
+    jid <- pathParam "jobId"
+    jobEnv <- lift $ asks Env.job
+    job <- Job.getStatus jobEnv jid
+    maybe (status NT.notFound404 >> json ()) json job
+
+deleteJob :: Action ()
+deleteJob = do
+    Auth.requireHeader
+    jid <- pathParam "jobId"
+    jobEnv <- lift $ asks Env.job
+    void $ Job.cancel jobEnv jid
+    json ()

@@ -12,6 +12,7 @@ import qualified Data.Text.IO as DTIO
 import Data.Ini.Config
 import Data.Password.Argon2
 import qualified Madf.Blog.JWT as JWT
+import qualified Madf.Blog.Job as Job
 import Madf.Blog.Config.Types
 import Madf.Blog.Config.Validate
 
@@ -46,6 +47,7 @@ defaultConfig = Config
     JWT.defaultConfig
     (LoggingConfig Stdout)
     (ServerConfig 3000 "127.0.0.1" False)
+    Job.defaultConfig
 
 parser :: IniParser Config
 parser = do
@@ -74,7 +76,12 @@ parser = do
         h <- pack <$> fieldOf "host" string
         d <- fieldOf "debug" flag
         return $ ServerConfig p h d
-    return $ Config mc dc ic ac jc lc sc
+    jobc <- section "job" $ do
+        ci <- fieldOf "cleanup_interval" number
+        mttl <- fromInteger <$> fieldOf "max_ttl" number
+        mccy <- fieldOf "max_concurrency" number
+        return $ Job.Config ci mttl mccy
+    return $ Config mc dc ic ac jc lc sc jobc
 
 logDestination :: Text -> Either String LogDestination
 logDestination = \case
