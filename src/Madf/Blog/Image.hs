@@ -6,6 +6,7 @@
 
 module Madf.Blog.Image
     ( Image (..)
+    , list
     , get
     , updateCaption
     , delete
@@ -21,6 +22,7 @@ module Madf.Blog.Image
     , imagePreviewURL
     , upload
     , getMultiple
+    , regenPreview
     , scaleImage
     ) where
 
@@ -186,6 +188,9 @@ imageFields = "images.id, images.post_id, images.caption, images.file_name, imag
 selectBase :: Query
 selectBase = "SELECT " <> imageFields <> " FROM images"
 
+list :: Connection -> IO [Image]
+list conn = query_ conn selectBase
+
 get :: Connection -> ImageId -> IO (Maybe Image)
 get conn iid = listToMaybe <$> query conn (selectBase <> " WHERE id = ?") (Only iid)
 
@@ -251,6 +256,13 @@ getPostInfo conn slug = do
         Nothing -> return Nothing
         Just (i, c) -> return $ Just (PostInfo i slug (timeToYear c))
 
+getPostInfoById :: Connection -> PostId -> IO (Maybe PostInfo)
+getPostInfoById conn i = do
+    minf <- listToMaybe <$> query conn "SELECT slug, created FROM posts WHERE id = ?" (Only i)
+    case minf of
+        Nothing -> return Nothing
+        Just (s, c) -> return $ Just (PostInfo i s (timeToYear c))
+
 upload :: Connection -> Config -> Slug.Type -> File BS.ByteString -> IO Image
 upload conn conf slug (_, fi) = do
     mpi <- getPostInfo conn slug
@@ -267,7 +279,7 @@ upload conn conf slug (_, fi) = do
 
 doUpload :: Connection -> Config -> Int -> PostInfo -> FileInfo BS.ByteString -> IO Image
 doUpload conn conf fh pinf fi = do
-    imageData <- decodeImage fi
+    imageData <- decodeImage (fileContent fi) (decodeUtf8 $ fileName fi)
     let mime = decodeUtf8 $ fileContentType fi
     let previewImage = createPreview conf imageData orientation
     checkCreateDir postDir
@@ -294,15 +306,14 @@ data ImageData = ImageData
     , idFileName :: !Text
     }
 
-decodeImage :: FileInfo BS.ByteString -> IO ImageData
-decodeImage fi = case CP.decodeImageWithMetadata (BS.toStrict $ fileContent fi) of
+decodeImage :: BS.ByteString -> Text -> IO ImageData
+decodeImage bytes fn = case CP.decodeImageWithMetadata (BS.toStrict bytes) of
     Left e -> throwBlogError (ImageError $ pack e)
     Right (img, md) -> case CP.lookup CP.Format md of
         Nothing -> throwBlogError $ ImageError "Unknown image format"
         Just f -> do
             let w = CP.dynamicMap CP.imageWidth img
             let h = CP.dynamicMap CP.imageHeight img
-            let fn = decodeUtf8 $ fileName fi
             return $ ImageData img f w h fn
 
 willTranspose :: Maybe EXIF.ImageOrientation -> Bool
@@ -330,6 +341,30 @@ createPreview conf idata orientation = ImageData pimg (idFormat idata) pw ph fn
         h = idHeight idata
         pw = CP.dynamicMap CP.imageWidth pimg
         ph = CP.dynamicMap CP.imageHeight pimg
+
+regenPreview :: Connection -> Config -> Image -> IO ()
+regenPreview conn conf img = do
+    let pid = imagePostId img
+        fn = imageFileName img
+        pfn = imagePreviewFileName img
+    mpinf <- getPostInfoById conn pid
+    case mpinf of
+        Nothing -> throwBlogError (PostNotFound $ "Post not found for image " <> toText (imageId img) <> ", '" <> fn <> "', with post id " <> toText pid)
+        Just (PostInfo _ s y) -> do
+            let postDir = destDir (main conf) <> "/" <> toText y <> "/" <> toText s
+                fp = postDir <> "/" <> fn
+                pfp = postDir <> "/" <> pfn
+            bytes <- BS.readFile (unpack fp)
+            imageData <- decodeImage bytes fn
+            let eexif = EXIF.parseExif bytes
+            let orientation = either (const Nothing) EXIF.getOrientation eexif
+            let previewImage = createPreview conf imageData orientation
+            removeIfExists pfp
+            previewImageFileInfo <- saveImage conf postDir previewImage
+            now <- getCurrentTime
+            execute conn
+                "UPDATE images SET preview_file_name = ?, preview_file_size = ?, preview_width = ?, preview_height = ?, updated = ? WHERE id = ?"
+                (idFileName previewImage, fileSize previewImageFileInfo, idWidth previewImage, idHeight previewImage, now, imageId img)
 
 -- We need this helper because CPE.scaleBilinear requires pixel base type
 -- to by Bounded and Integral, CP.dynamicMap does not impose such restrictions

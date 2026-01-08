@@ -4,10 +4,15 @@ module Madf.Blog.Admin.Routes
 
 import Control.Monad
 import Control.Monad.Reader
+import Control.Monad.IO.Unlift
 import Data.Text qualified as DT
 import Data.Text.Encoding
+import Data.Time.Clock
 import Data.Maybe
+import Data.Either
+import Data.Pool (withResource)
 import Data.Aeson qualified as DA
+import Database.SQLite.Simple (Connection)
 import Web.Scotty.Trans
 import Web.Scotty.Cookie
 import Network.HTTP.Types qualified as NT
@@ -32,6 +37,7 @@ import Madf.Blog.Time
 import Madf.Blog.ToText
 import Madf.Blog.Contents qualified as Contents
 import Lucid
+import UnliftIO.Exception
 
 routes :: App ()
 routes = do
@@ -58,7 +64,7 @@ loginAPI = do
     post "/admin/api/token/issue" $ do
         l <- formParam "login"
         p <- formParam "password"
-        conf <- askConfig
+        conf <- asks Env.config
         if Login.verify (Config.admin conf) l p
             then do
                 jwtEnv <- lift $ asks Env.jwt
@@ -78,15 +84,25 @@ loginAPI = do
 
 imageAPI :: App ()
 imageAPI = do
-    get    "/admin/api/image/:imageId" $ do
+    get    "/admin/api/images/:imageId" $ do
         Auth.requireHeader
         iid <- pathParam "imageId"
         r <- withConn (`Image.get` iid)
         json r
-    delete "/admin/api/image/:imageId" $ do
+    delete "/admin/api/images/:imageId" $ do
         Auth.requireHeader
         iid <- pathParam "imageId"
         withConn (`Image.delete` iid)
+    post   "/admin/api/images/regeneratePreviews" $ do
+        Auth.requireHeader
+        jobEnv <- asks Env.job
+        conf <- asks Env.config
+        pool <- asks Env.pool
+        jid <- lift $ Job.enqueue jobEnv "Images preview regeneration" $ \pCb -> do
+            withRunInIO $ \r -> do
+                withResource pool $ \conn -> do
+                    regeneratePreviews conn conf (r . pCb)
+        json jid
 
 postAPI :: App ()
 postAPI = do
@@ -108,7 +124,7 @@ postAPI = do
         ty <- formParam "type"
         r <- formParam "reason"
         d <- formParam "draft"
-        conf <- askConfig
+        conf <- asks Env.config
         case DA.eitherDecode c of
             Right bs -> withConn $ \conn -> do
                 PostView.update conn s t bs (PostStorage.makeType ty r) d
@@ -118,12 +134,12 @@ postAPI = do
         Auth.requireHeader
         i <- pathParam "postSlug"
         fs <- files
-        conf <- askConfig
+        conf <- asks Env.config
         r <- withConn $ \conn -> mapM (Image.upload conn conf i) fs
         json r
     post   "/admin/api/posts/regenerate" $ do
         Auth.requireHeader
-        conf <- askConfig
+        conf <- asks Env.config
         withConn $ \conn -> liftIO $ regenerateAll conn conf
 
 jobAPI :: App ()
@@ -240,3 +256,35 @@ deleteJob = do
     jobEnv <- lift $ asks Env.job
     void $ Job.cancel jobEnv jid
     json ()
+
+data RegenResult = RegenResult
+    { numImages   :: !Int
+    , numFailures :: !Int
+    , failures    :: ![(DT.Text, DT.Text)]
+    , duration    :: !NominalDiffTime
+    } deriving (Show)
+
+instance DA.ToJSON RegenResult
+    where
+        toJSON v = DA.object
+            [ "num_images"   DA..= numImages v
+            , "num_failures" DA..= numFailures v
+            , "failures"     DA..= failures v
+            , "duration"     DA..= duration v
+            ]
+
+regeneratePreviews :: Connection -> Config.Config -> (Int -> IO ()) -> IO DA.Value
+regeneratePreviews conn conf pCb = do
+    imgs <- Image.list conn
+    let num = Prelude.length imgs
+    if num == 0
+        then return . DA.toJSON $ RegenResult 0 0 [] 0
+        else do
+            start <- getCurrentTime
+            results <- forM (Prelude.zip imgs [0..]) $ \(img, imgNum) -> do
+                r <- try $ Image.regenPreview conn conf img
+                pCb (imgNum * 100 `div` num)
+                return (Image.imageFileName img, r :: Either SomeException ())
+            let errors = Prelude.map (\(fn, ex) -> (fn, DT.pack (show ex))) (Prelude.filter (isLeft . snd) results)
+            end <- getCurrentTime
+            return . DA.toJSON $ RegenResult num (Prelude.length errors) errors (diffUTCTime end start)
