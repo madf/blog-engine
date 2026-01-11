@@ -10,6 +10,7 @@ and this project adheres to the
 ### Added
  - Image filtering before scaling (#9).
  - Preview rotation according to EXIF data (#8).
+ - Image regeneration button (#10).
 
 ### Changed
  - Main post 'Save' button now saves image captions, individual caption 'Save' buttons are removed (#11).
