@@ -28,7 +28,9 @@ publish conn conf slug = do
             let year = timeToYear $ Post.postCreated p
             regenYearPosts conn dd year
             regenIndex conn conf dd
-            regenYearIndex conn dd year
+            -- Regenerate all year index pages to ensure sidebars are up-to-date
+            years <- Post.years conn
+            mapM_ (regenYearIndex conn dd) years
     where
         dd = destDir . main $ conf
 

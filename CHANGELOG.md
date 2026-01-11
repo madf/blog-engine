@@ -19,6 +19,9 @@ and this project adheres to the
  - Removed excessive JS logging.
  - Release archive now contains static files and a default config.
 
+### Fixed.
+ - Contents panel rendering (#13).
+
 ## 0.1.0.0 - 2025-12-02
 ### Added
  - Initial release.

@@ -155,9 +155,13 @@ lucid :: Html a -> Action ()
 lucid = html . renderText
 
 showPage :: ([(DT.Text, DT.Text)], DT.Text) -> Html () -> Action ()
-showPage breadcrumbs p = do
+showPage = showPageForYear Nothing
+
+showPageForYear :: Maybe Year -> ([(DT.Text, DT.Text)], DT.Text) -> Html () -> Action ()
+showPageForYear mYear breadcrumbs p = do
     cy <- liftIO currentYear
-    cnt <- withConn $ \conn -> Contents.get conn cy 0 maxBound
+    let selectedYear = fromMaybe cy mYear
+    cnt <- withConn $ \conn -> Contents.get conn selectedYear 0 maxBound
     lucid $ Pages.template breadcrumbs cy cnt p
 
 jsonError :: DT.Text -> Action ()
@@ -227,7 +231,7 @@ getYearPostsPage = do
     page <- queryParamMaybe "page"
     perPage <- queryParamMaybe "perPage"
     posts <- withConn $ \conn -> PostView.year conn y (fromMaybe 0 page) (fromMaybe 10 perPage)
-    showPage ([("Home", "/admin")], toText y) $ Pages.index posts
+    showPageForYear (Just y) ([("Home", "/admin")], toText y) $ Pages.index posts
 
 getAllPosts :: Action ()
 getAllPosts = do

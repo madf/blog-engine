@@ -183,10 +183,9 @@ enqueue env name concurrency action = do
             let progressCb v = atomically $ modifyTVar tp (\p -> p{ tpProgress = Just (clamp (0, 100) v) })
             let taskWithProgress = do
                     atomically $ writeTVar tp (TaskProgress (Just 0) Nothing)
-                    r <- finally (action progressCb) $ do
+                    finally (action progressCb) $ do
                         finishedAt <- liftIO getCurrentTime
                         atomically $ modifyTVar tp (\p -> p{ tpFinished = Just finishedAt })
-                    return r
 
             createdAt <- liftIO getCurrentTime
             jid <- nextJId env
