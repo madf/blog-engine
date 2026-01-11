@@ -11,6 +11,7 @@ module Madf.Blog.Job
     , State (..)
     , Action
     , ProgressCallback
+    , JobConcurrency (..)
     , initEnv
     , destroyEnv
     ) where
@@ -20,6 +21,7 @@ import Control.Monad.IO.Unlift (MonadIO, MonadUnliftIO, liftIO)
 import Data.Aeson
 import Data.Int
 import Data.Map qualified as DM
+import Data.Maybe (isNothing)
 import Data.Ord (clamp)
 import Data.Text
 import Data.Time.Clock
@@ -35,16 +37,20 @@ type ProgressCallback m = Int -> m ()
 
 type Action m = ProgressCallback m -> m Value
 
+data JobConcurrency = Concurrent | Exclusive !Text
+    deriving (Show, Eq)
+
 data TaskProgress = TaskProgress
     { tpProgress :: !(Maybe Int)
     , tpFinished :: !(Maybe UTCTime)
     }
 
 data Job = Job
-    { jName     :: !Text
-    , jTask     :: !(A.Async Value)
-    , jProgress :: !(TVar TaskProgress)
-    , jCreated  :: !UTCTime
+    { jName        :: !Text
+    , jTask        :: !(A.Async Value)
+    , jProgress    :: !(TVar TaskProgress)
+    , jCreated     :: !UTCTime
+    , jConcurrency :: !JobConcurrency
     }
 
 data State = Queued | Running !Int | Completed !Value | Failed !Text deriving (Show)
@@ -144,26 +150,55 @@ destroyEnv env = do
     reg <- atomically $ swapTVar (registry env) DM.empty
     mapM_ (A.cancel . jTask) (DM.elems reg)
 
-enqueue :: MonadUnliftIO m => Env -> Text -> Action m -> m JobId
-enqueue env name action = do
-    -- Create progress tracker
-    tp <- newTVarIO (TaskProgress Nothing Nothing)
-    let progressCb v = atomically $ modifyTVar tp (\p -> p{ tpProgress = Just (clamp (0, 100) v) })
-    let taskWithProgress = do
-            atomically $ writeTVar tp (TaskProgress (Just 0) Nothing)
-            finally (action progressCb) $ do
-                finishedAt <- liftIO getCurrentTime
-                atomically $ modifyTVar tp (\p -> p{ tpFinished = Just finishedAt })
-    -- Start the task and put it into the registry. Cancel the task if something goes wrong.
-    bracketOnError
-        (A.async $ withQSem (semaphore env) taskWithProgress)
-        A.cancel
-        (\task -> do
+hasActiveJobWithKey :: MonadIO m => Env -> Text -> m Bool
+hasActiveJobWithKey env key = do
+    reg <- readTVarIO (registry env)
+    anyM isActiveWithKey (DM.elems reg)
+    where
+        isActiveWithKey j = case jConcurrency j of
+            Exclusive k | k == key -> do
+                mer <- A.poll (jTask j)
+                return $ isNothing mer
+            _ -> return False
+
+        anyM :: Monad m => (a -> m Bool) -> [a] -> m Bool
+        anyM _ [] = return False
+        anyM p (x:xs) = do
+            b <- p x
+            if b then return True else anyM p xs
+
+enqueue :: MonadUnliftIO m => Env -> Text -> JobConcurrency -> Action m -> m (Maybe JobId)
+enqueue env name concurrency action = do
+    case concurrency of
+        Exclusive key -> do
+            hasConflict <- hasActiveJobWithKey env key
+            if hasConflict
+                then return Nothing
+                else Just <$> enqueueJob
+        Concurrent -> Just <$> enqueueJob
+    where
+        enqueueJob = do
+            tp <- newTVarIO (TaskProgress Nothing Nothing)
+
+            let progressCb v = atomically $ modifyTVar tp (\p -> p{ tpProgress = Just (clamp (0, 100) v) })
+            let taskWithProgress = do
+                    atomically $ writeTVar tp (TaskProgress (Just 0) Nothing)
+                    r <- finally (action progressCb) $ do
+                        finishedAt <- liftIO getCurrentTime
+                        atomically $ modifyTVar tp (\p -> p{ tpFinished = Just finishedAt })
+                    return r
+
             createdAt <- liftIO getCurrentTime
-            let job = Job name task tp createdAt
             jid <- nextJId env
-            atomically $ modifyTVar (registry env) (DM.insert jid job)
-            return jid)
+
+            bracketOnError
+                (A.asyncWithUnmask $ \unmask -> withQSem (semaphore env) (unmask taskWithProgress))
+                A.cancel
+                (\task -> do
+                    let job = Job name task tp createdAt concurrency
+                    atomically $ modifyTVar (registry env) (DM.insert jid job))
+
+            return jid
 
 getStatus :: MonadIO m => Env -> JobId -> m (Maybe Status)
 getStatus env jid = do
@@ -203,12 +238,11 @@ cancel :: MonadIO m => Env -> JobId -> m Bool
 cancel env jid = do
     mj <- atomically $ do
         reg <- readTVar (registry env)
-        let mj = DM.lookup jid reg
-        modifyTVar (registry env) (DM.delete jid)
-        return mj
+        return $ DM.lookup jid reg
     case mj of
         Just j -> do
             A.cancel $ jTask j
+            atomically $ modifyTVar (registry env) (DM.delete jid)
             return True
         Nothing -> return False
 

@@ -33,6 +33,7 @@ import Madf.Blog.Admin.Login qualified as Login
 import Madf.Blog.Env qualified as Env
 import Madf.Blog.JWT qualified as JWT
 import Madf.Blog.Job qualified as Job
+import Madf.Blog.Job (JobConcurrency(..))
 import Madf.Blog.Time
 import Madf.Blog.ToText
 import Madf.Blog.Contents qualified as Contents
@@ -98,11 +99,13 @@ imageAPI = do
         jobEnv <- asks Env.job
         conf <- asks Env.config
         pool <- asks Env.pool
-        jid <- lift $ Job.enqueue jobEnv "Images preview regeneration" $ \pCb -> do
+        mjid <- lift $ Job.enqueue jobEnv "Images preview regeneration" (Exclusive "preview-regen") $ \pCb -> do
             withRunInIO $ \r -> do
                 withResource pool $ \conn -> do
                     regeneratePreviews conn conf (r . pCb)
-        json jid
+        case mjid of
+            Just jid -> json jid
+            Nothing -> status NT.conflict409 >> json ("Preview regeneration already in progress" :: DT.Text)
 
 postAPI :: App ()
 postAPI = do
@@ -282,9 +285,9 @@ regeneratePreviews conn conf pCb = do
         else do
             start <- getCurrentTime
             results <- forM (Prelude.zip imgs [0..]) $ \(img, imgNum) -> do
-                r <- try $ Image.regenPreview conn conf img
+                r <- tryAny $ Image.regenPreview conn conf img
                 pCb (imgNum * 100 `div` num)
-                return (Image.imageFileName img, r :: Either SomeException ())
+                return (Image.imageFileName img, r)
             let errors = Prelude.map (\(fn, ex) -> (fn, DT.pack (show ex))) (Prelude.filter (isLeft . snd) results)
             end <- getCurrentTime
             return . DA.toJSON $ RegenResult num (Prelude.length errors) errors (diffUTCTime end start)

@@ -75,11 +75,34 @@ export const uploadImage = async (slug, data) => {
 };
 
 export const deleteImage = async id => {
-  const response = await authFetch(`/admin/api/image/${id}`, {
+  const response = await authFetch(`/admin/api/images/${id}`, {
     method: 'DELETE'
   });
 
   if (!response.ok) {
     throw new ApiError('Failed to delete image', response.status, response.statusText);
+  }
+};
+
+export const regenerateImagePreviews = async () => {
+  const response = await authFetch('/admin/api/images/regeneratePreviews', { method: 'POST' });
+  if (!response.ok) {
+    throw new ApiError('Failed to start preview regeneration', response.status, response.statusText);
+  }
+  return await response.json();
+};
+
+export const getJobStatus = async (jobId) => {
+  const response = await authFetch(`/admin/api/jobs/${jobId}`);
+  if (!response.ok) {
+    throw new ApiError('Failed to get job status', response.status, response.statusText);
+  }
+  return await response.json();
+};
+
+export const cancelJob = async (jobId) => {
+  const response = await authFetch(`/admin/api/jobs/${jobId}`, { method: 'DELETE' });
+  if (!response.ok) {
+    throw new ApiError('Failed to cancel job', response.status, response.statusText);
   }
 };

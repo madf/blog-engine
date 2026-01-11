@@ -15,6 +15,7 @@ index posts = do
     div_ [class_ "add-buttons"] $ do
         with button_ [class_ "btn btn-primary", id_ "new-post-btn"] "New Post"
         with button_ [class_ "btn btn-primary", id_ "regenerate-all-btn"] "Regenerate All Pages"
+        with button_ [class_ "btn btn-primary", id_ "regenerate-previews-btn"] "Regenerate Image Previews"
     mapM_ renderExcerpt posts
 
 renderExcerpt :: Post.Post -> Html ()
