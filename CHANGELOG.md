@@ -7,6 +7,8 @@ and this project adheres to the
 [Haskell Package Versioning Policy](https://pvp.haskell.org/).
 
 ## Unreleased
+
+## 0.1.1.0 - 2026-01-12
 ### Added
  - Image filtering before scaling (#9).
  - Preview rotation according to EXIF data (#8).
