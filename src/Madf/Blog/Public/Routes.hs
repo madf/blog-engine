@@ -4,9 +4,11 @@ module Madf.Blog.Public.Routes
 
 import Data.Text qualified as DT
 import Data.Text.Lazy qualified as DTL
+import Control.Monad.Reader
 import Web.Scotty.Trans
 import Network.HTTP.Types qualified as NT
 import Madf.Blog.App
+import Madf.Blog.Env qualified as Env
 import Madf.Blog.Config qualified as Config
 import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Image qualified as Image
@@ -18,17 +20,20 @@ routes = do
     get "/blog/:year/:fileName" getPostPage
     get "/blog/:year/:postSlug/:fileName" getPostImage
 
+destDir :: Action DT.Text
+destDir = asks $ Config.destDir . Config.main . Env.config
+
 getIndexPage :: Action ()
 getIndexPage = do
     setHeader "Content-Type" "text/html"
-    dd <- Config.destDir . Config.main <$> askConfig
+    dd <- destDir
     file (DT.unpack $ dd <> "/index.html")
 
 getYearIndexPage :: Action ()
 getYearIndexPage = do
     year <- pathParam "year"
     setHeader "Content-Type" "text/html"
-    dd <- Config.destDir . Config.main <$> askConfig
+    dd <- destDir
     file (DT.unpack $ dd <> "/" <> year <> "/index.html")
 
 getPostPage :: Action ()
@@ -36,7 +41,7 @@ getPostPage = do
     year <- pathParam "year"
     fn <- pathParam "fileName"
     setHeader "Content-Type" "text/html"
-    dd <- Config.destDir . Config.main <$> askConfig
+    dd <- destDir
     file (DT.unpack $ dd <> "/" <> year <> "/" <> fn)
 
 getPostImage :: Action ()
@@ -49,5 +54,5 @@ getPostImage = do
         Nothing -> status NT.notFound404
         Just img -> do
             setHeader "Content-Type" (DTL.fromStrict $ Image.imageMIMEType img)
-            dd <- Config.destDir . Config.main <$> askConfig
+            dd <- destDir
             file (DT.unpack $ dd <> "/" <> year <> "/" <> Slug.unSlug slug <> "/" <> fn)

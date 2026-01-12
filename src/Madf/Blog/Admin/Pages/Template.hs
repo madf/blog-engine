@@ -16,6 +16,7 @@ base y b = doctypehtml_ $ do
         title_ (toHtml title)
         link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/common.css"]
         link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/admin.css"]
+        link_ [rel_ "stylesheet", type_ "text/css", href_ "/css/modal.css"]
         link_ [rel_ "icon", type_ "image/x-icon", href_ "/favicon.png"]
         meta_ [charset_ "UTF-8"]
         meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1.0"]
@@ -32,6 +33,19 @@ base y b = doctypehtml_ $ do
         title :: Text
         title = "Madf's blog - Administrative interface"
 
+jobModal :: Html ()
+jobModal = with div_ [id_ "job-modal", class_ "modal"] $ do
+    with div_ [class_ "modal-content"] $ do
+        with div_ [class_ "modal-header"] $ do
+            with h3_ [id_ "job-modal-title"] ""
+        with div_ [class_ "modal-body"] $ do
+            with div_ [class_ "progress-bar"] $ do
+                with div_ [id_ "job-progress", class_ "progress-fill"] ""
+            with p_ [id_ "job-status", class_ "job-status"] ""
+        with div_ [class_ "modal-footer"] $ do
+            with button_ [id_ "job-cancel-btn", class_ "btn btn-secondary"] "Cancel Job"
+            with button_ [id_ "job-close-btn", class_ "btn btn-primary"] "Close"
+
 template :: Nav.Breadcrumbs -> Year -> Contents.Contents -> Html () -> Html ()
 template (path, current) y cnt b = base y $ do
             Nav.render path current
@@ -40,3 +54,4 @@ template (path, current) y cnt b = base y $ do
                 aside_ $ do
                     with h4_ [class_ "contents-header"] "Contents"
                     Contents.draw cnt
+            jobModal

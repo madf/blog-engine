@@ -14,6 +14,7 @@ import Database.SQLite.Simple
 import Control.Monad.Reader
 import Control.Monad.IO.Unlift (MonadUnliftIO(..))
 import qualified Madf.Blog.Config as C
+import qualified Madf.Blog.Job as Job
 import qualified Madf.Blog.JWT as JWT
 import qualified Madf.Blog.Logger as Logger
 
@@ -22,6 +23,7 @@ data Env = Env
     , pool      :: !(Pool Connection)
     , jwt       :: !JWT.Env
     , loggerRes :: !Logger.LoggerResource
+    , job       :: !Job.Env
     }
 
 newtype EnvM a = EnvM
@@ -47,9 +49,11 @@ create conf regenKey = do
     p <- createPool conf
     je <- JWT.createEnv (C.jwt conf) regenKey
     lr <- Logger.create conf
-    return $ Env conf p je lr
+    jobEnv <- Job.initEnv (C.job conf)
+    return $ Env conf p je lr jobEnv
 
 destroy :: Env -> IO ()
 destroy env = do
+    Job.destroyEnv (job env)
     Logger.cleanup (loggerRes env)
     destroyAllResources (pool env)

@@ -8,6 +8,7 @@ module Madf.Blog.Ids
     , unId
     , PostId
     , ImageId
+    , JobId
     , Id
     ) where
 
@@ -21,9 +22,9 @@ import Database.SQLite.Simple.ToField
 import Web.Scotty
 import Madf.Blog.ToText
 
-data Entity = Post | Image
+data Entity = Post | Image | Job
 
-newtype Id (a :: Entity) = Id Int64 deriving (Show, Eq, FromField, ToField, FromJSON, ToJSON, Parsable)
+newtype Id (a :: Entity) = Id Int64 deriving (Show, Eq, Ord, FromField, ToField, FromJSON, ToJSON, Parsable)
 
 instance ToText (Id a)
     where
@@ -40,3 +41,4 @@ fromId (Id v) = decimal v
 
 type PostId = Id 'Post
 type ImageId = Id 'Image
+type JobId = Id 'Job

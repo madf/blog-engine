@@ -1,4 +1,4 @@
-import { updatePost, uploadImage, updateImageCaption, deleteImage } from './api.js'
+import { updatePost, uploadImage, deleteImage } from './api.js'
 import { redirectToLogin } from './util.js'
 
 let blockIdCounter = 0;
@@ -46,7 +46,6 @@ const moveBlockDown = idx => {
 }
 
 const updateTextContent = (idx, content) => {
-  console.log(`New text for block ${idx}: ${content}`);
   const block = post.content[idx];
   if (block) {
     block.content = content;
@@ -113,27 +112,6 @@ const setImageCaption = (blockIdx, idx, caption) => {
     const image = block.content[idx];
     if (image) {
       image.caption = caption;
-    }
-  }
-};
-
-const saveImageCaption = async (blockIdx, idx) => {
-  const block = post.content[blockIdx];
-  if (block) {
-    const image = block.content[idx];
-    if (image) {
-      try {
-        const formData = new FormData();
-        formData.append('caption', image.caption);
-
-        await updateImageCaption(image.id, formData);
-      } catch (error) {
-        if (error.code === 401) {
-          redirectToLogin();
-          return;
-        }
-        console.error('Image caption update failed:', error);
-      }
     }
   }
 };
@@ -228,8 +206,6 @@ const createImageCaption = (blockIdx, img, idx) => {
   ici.value = img.caption;
   ici.addEventListener('input', e => { setImageCaption(blockIdx, idx, e.currentTarget.value); });
   ic.appendChild(ici);
-  const icb = createButton('btn btn-small btn-secondary', () => { saveImageCaption(blockIdx, idx); }, '💾')
-  ic.appendChild(icb);
   return ic;
 };
 
@@ -273,7 +249,6 @@ const createCarouselContent = (block, blockIdx) => {
   const cb = document.createElement('div');
   cb.className = 'carousel-block';
   cb.appendChild(createImageUpload(blockIdx));
-  console.log(`Carousel images: ${block.content.length}`);
   if (block.content.length > 0)
   {
     const ig = document.createElement('div');

@@ -24,6 +24,10 @@ newtype Type = Type Text deriving (Show, ToField, FromField, ToJSON, FromJSON, P
 unSlug :: Type -> Text
 unSlug (Type v) = v
 
+instance ToText Type
+    where
+        toText = unSlug
+
 get :: Int -> Text -> IO Type
 get len suffix = do
     (bs, _) <- randomBytesGenerate halfLen <$> drgNew

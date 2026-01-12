@@ -109,7 +109,14 @@ get conn slug = do
         Nothing -> return Nothing
 
 update :: Connection -> Slug.Type -> Text -> [Block] -> Type -> Bool -> IO ()
-update conn slug t bs = Storage.update conn slug t (toStorageBlocks bs)
+update conn slug t bs ty d = withTransaction conn $ do
+    mapM_ (updateImageCaptions conn) bs
+    Storage.update conn slug t (toStorageBlocks bs) ty d
+    where
+        updateImageCaptions :: Connection -> Block -> IO ()
+        updateImageCaptions _ (TextBlock _) = return ()
+        updateImageCaptions conn' (CarouselBlock images) =
+            mapM_ (\img -> Image.updateCaption conn' (Image.imageId img) (Image.imageCaption img)) images
 
 list :: Connection -> Int -> Int -> IO [Post]
 list conn page perPage = do

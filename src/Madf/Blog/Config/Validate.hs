@@ -10,6 +10,7 @@ import System.FilePath
 import Madf.Blog.Config.Types
 import Madf.Blog.ToText
 import qualified Madf.Blog.JWT as JWT
+import qualified Madf.Blog.Job as Job
 
 -- Validation errors
 data ValidationError
@@ -76,9 +77,12 @@ validateValues conf = concat
     , validateNonEmpty "jwt.key_issuer" (JWT.keyIssuer $ jwt conf)
     , validatePort "server.port" (port $ server conf)
     , validateNonEmpty "server.host" (host $ server conf)
+    , validatePositive "job.cleanup_interval" (Job.cleanupInterval $ job conf)
+    , validatePositive "job.max_ttl" (Job.maxTTL $ job conf)
+    , validatePositive "job.max_concurrency" (Job.maxConcurrency $ job conf)
     ]
 
-validatePositive :: Text -> Int -> [ValidationError]
+validatePositive :: (Num a, Ord a, ToText a) => Text -> a -> [ValidationError]
 validatePositive field n
     | n > 0     = []
     | otherwise = [InvalidValue field $ "Value must be positive, got: " <> toText n]

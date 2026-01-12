@@ -55,6 +55,9 @@ library
       Madf.Blog.Files
       Madf.Blog.Ids
       Madf.Blog.Image
+      Madf.Blog.Image.BoxFilter
+      Madf.Blog.Image.Orientation
+      Madf.Blog.Job
       Madf.Blog.JWT
       Madf.Blog.Logger
       Madf.Blog.Post.Storage
@@ -73,7 +76,7 @@ library
       src
   default-extensions:
       ImportQualifiedPost OverloadedStrings LambdaCase
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wunused-packages -funbox-strict-fields
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wunused-packages -funbox-strict-fields -O2
   build-depends:
       JuicyPixels
     , JuicyPixels-extra
@@ -81,11 +84,13 @@ library
     , base >=4.7 && <5
     , bytestring
     , config-ini
+    , containers
     , crypton
     , directory
     , fast-logger
     , filepath
     , hashable
+    , hsexif
     , hsyslog
     , http-types
     , jose <0.12
@@ -99,7 +104,9 @@ library
     , text
     , time
     , unix
+    , unliftio
     , unliftio-core
+    , vector
     , wai
     , wai-extra
     , wai-middleware-static
@@ -117,7 +124,7 @@ executable mbe
       app
   default-extensions:
       ImportQualifiedPost OverloadedStrings LambdaCase
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wunused-packages -funbox-strict-fields -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wunused-packages -funbox-strict-fields -O2 -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , mbe
@@ -135,7 +142,7 @@ test-suite mbe-test
       test
   default-extensions:
       ImportQualifiedPost OverloadedStrings LambdaCase
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wunused-packages -funbox-strict-fields -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wunused-packages -funbox-strict-fields -O2 -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , hspec
