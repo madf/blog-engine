@@ -8,6 +8,10 @@ and this project adheres to the
 
 ## Unreleased
 
+## 1.1.1 - 2026-01-14
+### Fixed.
+ - Versioning.
+
 ## 0.1.1.0 - 2026-01-12
 ### Added
  - Image filtering before scaling (#9).
