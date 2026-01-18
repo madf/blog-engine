@@ -8,6 +8,10 @@ and this project adheres to the
 
 ## Unreleased
 
+## 1.1.2 - 2026-01-18
+### Changed.
+ - Append version number to the release archive.
+
 ## 1.1.1 - 2026-01-14
 ### Fixed.
  - Versioning.
