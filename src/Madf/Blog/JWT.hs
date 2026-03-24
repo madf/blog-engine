@@ -7,7 +7,6 @@ module Madf.Blog.JWT
     , configParser
     , issue
     , check
-    , renew
     ) where
 
 import Data.Text
@@ -142,6 +141,3 @@ verify env t = do
 
 check :: Env -> Text -> IO Result
 check env t = verify env (LBS.fromStrict . encodeUtf8 $ t)
-
-renew :: Env -> Text -> IO Text
-renew env t = check env t >> issue env

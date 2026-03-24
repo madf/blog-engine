@@ -74,14 +74,11 @@ loginAPI = do
                 json t
             else status NT.unauthorized401 >> jsonError "Bad credentials"
     post "/admin/api/token/renew" $ do
-        mt <- getCookie "authtoken"
-        case mt of
-            Nothing -> status NT.unauthorized401 >> jsonError "No authorization token"
-            Just t -> do
-                jwtEnv <- lift $ asks Env.jwt
-                nt <- liftIO $ JWT.renew jwtEnv t
-                setAuthCookie nt
-                json nt
+        Auth.requireHeader
+        jwtEnv <- lift $ asks Env.jwt
+        nt <- liftIO $ JWT.issue jwtEnv
+        setAuthCookie nt
+        json nt
 
 imageAPI :: App ()
 imageAPI = do

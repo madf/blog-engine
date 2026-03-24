@@ -20,7 +20,6 @@ base y b = doctypehtml_ $ do
         link_ [rel_ "icon", type_ "image/x-icon", href_ "/favicon.png"]
         meta_ [charset_ "UTF-8"]
         meta_ [name_ "viewport", content_ "width=device-width, initial-scale=1.0"]
-        script_ [src_ "/js/admin.js", type_ "module"] ("" :: Text)
     body_ $ do
         with div_ [class_ "container"] $ do
             header_ $ do
@@ -55,3 +54,4 @@ template (path, current) y cnt b = base y $ do
                     with h4_ [class_ "contents-header"] "Contents"
                     Contents.draw cnt
             jobModal
+            script_ [src_ "/js/admin.js", type_ "module"] ("" :: Text)
