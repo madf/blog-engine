@@ -10,6 +10,7 @@ module Madf.Blog.Post.Storage
     , list
     , years
     , year
+    , pages
     ) where
 
 import Data.List.NonEmpty qualified as DLN
@@ -152,3 +153,8 @@ makePost :: (PostId, Slug.Type, UTCTime, Maybe UTCTime, Text, LBS.ByteString, Te
 makePost (pid, slug, created, updated, t, c, ty, r, isd) = Post pid slug created updated t (fromMaybe dataError $ decode c) (makeType ty r) isd
     where
         dataError = [TextBlock "Data error", TextBlock (decodeUtf8 $ LBS.toStrict c)]
+
+pages :: Connection -> Int -> IO Int
+pages conn perPage = do
+    postNum <- (fromMaybe 0 . listToMaybe) <$> query_ conn "SELECT COUNT(*) FROM posts"
+    return $ (postNum - 1) `div` perPage + 1

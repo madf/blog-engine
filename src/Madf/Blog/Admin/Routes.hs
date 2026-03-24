@@ -21,6 +21,7 @@ import Madf.Blog.Config qualified as Config
 import Madf.Blog.Image qualified as Image
 import Madf.Blog.Post.Storage qualified as PostStorage
 import Madf.Blog.Post.View qualified as PostView
+import Madf.Blog.Galleries qualified as Galleries
 import Madf.Blog.Admin.Pages.Edit qualified as Pages
 import Madf.Blog.Admin.Pages.Preview qualified as Pages
 import Madf.Blog.Admin.Pages.Login qualified as Pages
@@ -47,11 +48,12 @@ routes = do
 
 pages :: App ()
 pages = do
-    get  "/admin" getAdminIndexPage
-    get  "/admin/login" getAdminLoginPage
-    get  "/admin/posts/:postSlug" getPostPreviewPage
-    get  "/admin/posts/:postSlug/edit" getPostEditPage
-    get  "/admin/years/:year" getYearPostsPage
+    get "/admin" getAdminIndexPage
+    get "/admin/login" getAdminLoginPage
+    get "/admin/posts/:postSlug" getPostPreviewPage
+    get "/admin/posts/:postSlug/edit" getPostEditPage
+    get "/admin/years/:year" getYearPostsPage
+    get "/admin/galleries" getGalleries
 
 api :: App ()
 api = do
@@ -232,6 +234,17 @@ getYearPostsPage = do
     perPage <- queryParamMaybe "perPage"
     posts <- withConn $ \conn -> PostView.year conn y (fromMaybe 0 page) (fromMaybe 10 perPage)
     showPageForYear (Just y) ([("Home", "/admin")], toText y) $ Pages.index posts
+
+getGalleries :: Action ()
+getGalleries = do
+    Auth.requireCookie
+    page <- queryParamMaybe "page"
+    perPage <- queryParamMaybe "perPage"
+    (gals, pages) <- withConn $ \conn -> do
+        gals <- Galleries.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
+        pages <- Galleries.pages conn perPage
+        return (gals, pages)
+    showPage ([("Home", "/admin")], "Galleries") $ Pages.galleries gals
 
 getAllPosts :: Action ()
 getAllPosts = do

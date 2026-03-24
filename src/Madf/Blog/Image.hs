@@ -191,6 +191,9 @@ selectBase = "SELECT " <> imageFields <> " FROM images"
 list :: Connection -> IO [Image]
 list conn = query_ conn selectBase
 
+listByPost :: Connection -> PostId -> IO [Image]
+listByPost conn pid = query conn (selectBase <> " WHERE post_id = ?") (Only pid)
+
 get :: Connection -> ImageId -> IO (Maybe Image)
 get conn iid = listToMaybe <$> query conn (selectBase <> " WHERE id = ?") (Only iid)
 
