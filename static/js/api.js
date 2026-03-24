@@ -11,7 +11,7 @@ class ApiError extends Error {
   }
 }
 
-const getAuthToken = () => {
+export const getAuthToken = () => {
   const match = document.cookie.match(/authtoken=([^;]+)/);
   return match ? match[1] : null;
 };
@@ -31,6 +31,16 @@ export const authFetch = async (url, options = {}) => {
     headers
   });
 };
+
+export const renewAuthToken = async () => {
+  const response = await authFetch('/admin/api/token/renew', { method: 'POST' });
+
+  if (!response.ok) {
+    throw new ApiError('Can not renew auth token', response.status, response.statusText);
+  }
+
+  return await response.json();
+}
 
 export const createPost = async () => {
   const response = await authFetch('/admin/api/posts', { method: 'POST' });
