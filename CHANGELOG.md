@@ -8,6 +8,10 @@ and this project adheres to the
 
 ## Unreleased
 
+## 1.1.4 - 2026-04-15
+### Fixed.
+ - Image width.
+
 ## 1.1.3 - 2026-03-24
 ### Added.
  - JWT renewal.
