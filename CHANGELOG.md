@@ -8,6 +8,10 @@ and this project adheres to the
 
 ## Unreleased
 
+## 1.1.5 - 2026-04-16
+### Fixed.
+ - Excerpt image width.
+
 ## 1.1.4 - 2026-04-15
 ### Fixed.
  - Image width.
