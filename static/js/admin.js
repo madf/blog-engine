@@ -1,5 +1,5 @@
-import { createPost, regeneratePosts, regenerateImagePreviews } from './api.js'
-import { redirectToLogin } from './util.js'
+import { createPost, regeneratePosts, regenerateImagePreviews, getAuthToken, renewAuthToken } from './api.js'
+import { base64URLDecode, redirectToLogin } from './util.js'
 import { startJobMonitoring, handleCancelJob, handleCloseModal } from './job.js'
 
 const newPostHandler = async e => {
@@ -82,7 +82,41 @@ const regeneratePreviewsHandler = async e => {
   }
 };
 
+const scheduleUpdateToken = async t => {
+  const parts = t.split(".");
+  if (parts.length != 3) {
+    throw Error("Bad JWT format");
+  }
+  const hdr = JSON.parse(base64URLDecode(parts[0]));
+  if (!hdr.alg) { // Sanity check
+    throw Error("Missing JWT header 'alg' field");
+  }
+  const data = JSON.parse(base64URLDecode(parts[1]));
+  if (!data.exp) {
+    throw Error("Missing JWT payload 'exp' field");
+  }
+  const now = Date.now() / 1000;
+  if (data.exp < now) {
+    throw Error("JWT expired");
+  }
+  setTimeout(async () => {
+    try {
+      const nt = await renewAuthToken();
+      scheduleUpdateToken(nt);
+    } catch (err) {
+      redirectToLogin();
+    }
+  }, (data.exp - now) * 1000 / 3);
+}
+
 const onLoad = () => {
+  const token = getAuthToken();
+  if (token) {
+    scheduleUpdateToken(token).catch(() => redirectToLogin());
+  } else {
+    redirectToLogin();
+  }
+
   const newPostBtn = document.getElementById('new-post-btn');
   const regenerateBtn = document.getElementById('regenerate-all-btn');
   const regeneratePreviewsBtn = document.getElementById('regenerate-previews-btn');

@@ -356,6 +356,7 @@ main {
 .excerpt img {
   max-height: 400px;
   max-width: 300px;
+  width: 100%;
   height: auto;
   border-radius: 6px;
   margin: 10px 0;
@@ -410,6 +411,8 @@ main {
 .carousel-image {
   display: block;
   margin: auto;
+  max-width: 100%;
+  height: auto;
 }
 
 .carousel-image-show {
