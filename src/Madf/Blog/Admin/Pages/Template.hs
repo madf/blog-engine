@@ -7,8 +7,6 @@ import Data.Text
 import Lucid
 import Madf.Blog.Time
 import Madf.Blog.Admin.Nav qualified as Nav
-import Madf.Blog.Contents qualified as Contents
-import Madf.Blog.Admin.Pages.Contents qualified as Contents
 
 base :: Year -> Html () -> Html ()
 base y b = doctypehtml_ $ do
@@ -45,13 +43,16 @@ jobModal = with div_ [id_ "job-modal", class_ "modal"] $ do
             with button_ [id_ "job-cancel-btn", class_ "btn btn-secondary"] "Cancel Job"
             with button_ [id_ "job-close-btn", class_ "btn btn-primary"] "Close"
 
-template :: Nav.Breadcrumbs -> Year -> Contents.Contents -> Html () -> Html ()
-template (path, current) y cnt b = base y $ do
+template :: Nav.Section -> Nav.Breadcrumbs -> Year -> Maybe (Html ()) -> Html () -> Html ()
+template sect (path, current) y mAside b = base y $ do
             Nav.render path current
             main_ $ do
+                Nav.renderSidebar sect
                 section_ b
-                aside_ $ do
-                    with h4_ [class_ "contents-header"] "Contents"
-                    Contents.draw cnt
+                case mAside of
+                    Nothing           -> mempty
+                    Just asideContent -> aside_ $ do
+                        with h4_ [class_ "contents-header"] "Contents"
+                        asideContent
             jobModal
             script_ [src_ "/js/admin.js", type_ "module"] ("" :: Text)

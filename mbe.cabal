@@ -31,7 +31,9 @@ library
       Madf.Blog.Admin.Nav
       Madf.Blog.Admin.Pages.Contents
       Madf.Blog.Admin.Pages.Edit
+      Madf.Blog.Admin.Pages.Galleries
       Madf.Blog.Admin.Pages.Index
+      Madf.Blog.Admin.Pages.Jobs
       Madf.Blog.Admin.Pages.Login
       Madf.Blog.Admin.Pages.NotFound
       Madf.Blog.Admin.Pages.PostType
@@ -53,6 +55,7 @@ library
       Madf.Blog.Env
       Madf.Blog.Error
       Madf.Blog.Files
+      Madf.Blog.Galleries
       Madf.Blog.Ids
       Madf.Blog.Image
       Madf.Blog.Image.BoxFilter

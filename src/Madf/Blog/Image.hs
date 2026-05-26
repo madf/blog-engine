@@ -7,6 +7,7 @@
 module Madf.Blog.Image
     ( Image (..)
     , list
+    , listByPost
     , get
     , updateCaption
     , delete

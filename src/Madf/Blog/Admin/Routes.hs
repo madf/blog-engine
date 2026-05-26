@@ -28,6 +28,10 @@ import Madf.Blog.Admin.Pages.Login qualified as Pages
 import Madf.Blog.Admin.Pages.Template qualified as Pages
 import Madf.Blog.Admin.Pages.Index qualified as Pages
 import Madf.Blog.Admin.Pages.NotFound qualified as Pages
+import Madf.Blog.Admin.Pages.Galleries qualified as Pages
+import Madf.Blog.Admin.Pages.Jobs qualified as Pages
+import Madf.Blog.Admin.Pages.Contents qualified as PagesContents
+import Madf.Blog.Admin.Nav qualified as Nav
 import Madf.Blog.Admin.Publish
 import Madf.Blog.Admin.Auth qualified as Auth
 import Madf.Blog.Admin.Login qualified as Login
@@ -54,6 +58,7 @@ pages = do
     get "/admin/posts/:postSlug/edit" getPostEditPage
     get "/admin/years/:year" getYearPostsPage
     get "/admin/galleries" getGalleries
+    get "/admin/jobs"      getAdminJobsPage
 
 api :: App ()
 api = do
@@ -153,15 +158,19 @@ jobAPI = do
 lucid :: Html a -> Action ()
 lucid = html . renderText
 
-showPage :: ([(DT.Text, DT.Text)], DT.Text) -> Html () -> Action ()
+showPage :: Nav.Section -> ([(DT.Text, DT.Text)], DT.Text) -> Html () -> Action ()
 showPage = showPageForYear Nothing
 
-showPageForYear :: Maybe Year -> ([(DT.Text, DT.Text)], DT.Text) -> Html () -> Action ()
-showPageForYear mYear breadcrumbs p = do
+showPageForYear :: Maybe Year -> Nav.Section -> ([(DT.Text, DT.Text)], DT.Text) -> Html () -> Action ()
+showPageForYear mYear sect breadcrumbs p = do
     cy <- liftIO currentYear
     let selectedYear = fromMaybe cy mYear
-    cnt <- withConn $ \conn -> Contents.get conn selectedYear 0 maxBound
-    lucid $ Pages.template breadcrumbs cy cnt p
+    mAside <- case sect of
+        Nav.Posts -> do
+            cnt <- withConn $ \conn -> Contents.get conn selectedYear 0 maxBound
+            return $ Just (PagesContents.draw cnt)
+        _ -> return Nothing
+    lucid $ Pages.template sect breadcrumbs cy mAside p
 
 jsonError :: DT.Text -> Action ()
 jsonError = json
@@ -187,7 +196,7 @@ getAdminIndexPage = do
     page <- queryParamMaybe "page"
     perPage <- queryParamMaybe "perPage"
     posts <- withConn $ \conn -> PostView.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
-    showPage ([], "Home") $ Pages.index posts
+    showPage Nav.Posts ([], "Home") $ Pages.index posts
 
 getAdminLoginPage :: Action ()
 getAdminLoginPage = do
@@ -203,11 +212,11 @@ getPostEditPage = do
     case mp of
         Just p -> do
             let title = if PostView.postTitle p == "" then "Untitled" else PostView.postTitle p
-                breadcrumbs = ([("Home", "/admin")], title)
-            showPage breadcrumbs $ Pages.edit p
+                breadcrumbs = ([("Home", "/admin"), ("Posts", "/admin")], title)
+            showPage Nav.Posts breadcrumbs $ Pages.edit p
         Nothing -> do
             status NT.notFound404
-            showPage ([], "Not Found") $ Pages.notFound "Unknown post id"
+            showPage Nav.Posts ([], "Not Found") $ Pages.notFound "Unknown post id"
 
 getPostPreviewPage :: Action ()
 getPostPreviewPage = do
@@ -217,11 +226,11 @@ getPostPreviewPage = do
     case mp of
         Just p -> do
             let title = if PostView.postTitle p == "" then "Untitled" else PostView.postTitle p
-                breadcrumbs = ([("Home", "/admin")], title)
-            showPage breadcrumbs $ Pages.preview False p
+                breadcrumbs = ([("Home", "/admin"), ("Posts", "/admin")], title)
+            showPage Nav.Posts breadcrumbs $ Pages.preview False p
         Nothing -> do
             status NT.notFound404
-            showPage ([], "Not Found") $ Pages.notFound "Unknown post id"
+            showPage Nav.Posts ([], "Not Found") $ Pages.notFound "Unknown post id"
 
 getYearPostsPage :: Action ()
 getYearPostsPage = do
@@ -230,18 +239,23 @@ getYearPostsPage = do
     page <- queryParamMaybe "page"
     perPage <- queryParamMaybe "perPage"
     posts <- withConn $ \conn -> PostView.year conn y (fromMaybe 0 page) (fromMaybe 10 perPage)
-    showPageForYear (Just y) ([("Home", "/admin")], toText y) $ Pages.index posts
+    showPageForYear (Just y) Nav.Posts ([("Home", "/admin"), ("Posts", "/admin")], toText y) $ Pages.index posts
 
 getGalleries :: Action ()
 getGalleries = do
     Auth.requireCookie
     page <- queryParamMaybe "page"
     perPage <- queryParamMaybe "perPage"
-    (gals, pages) <- withConn $ \conn -> do
+    (gals, _) <- withConn $ \conn -> do
         gals <- Galleries.list conn (fromMaybe 0 page) (fromMaybe 10 perPage)
-        pages <- Galleries.pages conn perPage
-        return (gals, pages)
-    showPage ([("Home", "/admin")], "Galleries") $ Pages.galleries gals
+        pageNum <- Galleries.pages conn (fromMaybe 10 perPage)
+        return (gals, pageNum)
+    showPage Nav.Galleries ([("Home", "/admin")], "Galleries") $ Pages.galleries gals
+
+getAdminJobsPage :: Action ()
+getAdminJobsPage = do
+    Auth.requireCookie
+    showPage Nav.Jobs ([("Home", "/admin")], "Jobs") Pages.jobs
 
 getAllPosts :: Action ()
 getAllPosts = do

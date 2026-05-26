@@ -8,6 +8,7 @@ import Data.Text
 import Data.Maybe
 import Data.Aeson
 import Database.SQLite.Simple
+import Madf.Blog.Image (Image)
 import Madf.Blog.Image qualified as Image
 import Madf.Blog.Post.Storage qualified as Post
 import Madf.Blog.Ids

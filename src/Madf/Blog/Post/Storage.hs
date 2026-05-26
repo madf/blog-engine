@@ -156,5 +156,5 @@ makePost (pid, slug, created, updated, t, c, ty, r, isd) = Post pid slug created
 
 pages :: Connection -> Int -> IO Int
 pages conn perPage = do
-    postNum <- (fromMaybe 0 . listToMaybe) <$> query_ conn "SELECT COUNT(*) FROM posts"
+    postNum <- (fromMaybe 0 . listToMaybe . fmap fromOnly) <$> query_ conn "SELECT COUNT(*) FROM posts"
     return $ (postNum - 1) `div` perPage + 1
