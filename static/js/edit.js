@@ -57,7 +57,7 @@ const handleImageUpload = async (blockIdx, files) => {
   if (!block || block.type !== 'carousel') return;
   let needSave = false;
 
-  for (const file of files) {
+  for (const file of Array.from(files).sort((a, b) => a.name.localeCompare(b.name))) {
     if (!file.type.startsWith('image/')) {
       continue;
     }
