@@ -39,10 +39,12 @@ newtype DBConfig = DBConfig
     } deriving (Show)
 
 data ImagesConfig = ImagesConfig
-    { previewHeight :: !Int
-    , jpegQuality   :: !Int
-    , previewPrefix :: !Text
-    , scaleMethod   :: !Scale.Method
+    { previewHeight    :: !Int
+    , jpegQuality      :: !Int
+    , previewPrefix    :: !Text
+    , scaleMethod      :: !Scale.Method
+    , prescaleEnabled  :: !Bool
+    , prescaleThreshold :: !Int
     } deriving (Show)
 
 data AdminConfig = AdminConfig

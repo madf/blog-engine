@@ -2,7 +2,7 @@ module Madf.Blog.Admin.Pages.Edit
     ( edit
     ) where
 
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import Data.Text.Encoding (decodeUtf8)
 import Data.ByteString.Lazy (toStrict)
 import Data.Aeson (encode)
@@ -12,8 +12,8 @@ import qualified Madf.Blog.Slug as Slug
 import Madf.Blog.Admin.Pages.PostType
 import Madf.Blog.Time
 
-edit :: Post.Post -> Html ()
-edit p = do
+edit :: Post.Post -> Bool -> Int -> Int -> Html ()
+edit p prescaleOn prescaleMin jpegQuality = do
     with form_ [id_ "post-form", action_ "", method_ "post"] $ do
         input_ [hidden_ "", type_ "text", name_ "post", id_ "post", (value_ . decodeUtf8 . toStrict . encode) p]
         with div_ [class_ "header"] $ do
@@ -32,4 +32,7 @@ edit p = do
                                   else input_ [name_ "is_draft", id_ "is_draft", type_ "checkbox"]
             with a_ [id_ "preview-button", class_ "link-btn btn-secondary m-l-auto", href_ ("/admin/posts/" <> Slug.unSlug (Post.postSlug p))] "Preview"
             with button_ [id_ "save-button", class_ "btn btn-primary", type_ "button"] "Save"
+    input_ [type_ "hidden", id_ "prescale-enabled",   value_ (if prescaleOn then "true" else "false")]
+    input_ [type_ "hidden", id_ "prescale-threshold", value_ (pack $ show prescaleMin)]
+    input_ [type_ "hidden", id_ "jpeg-quality",       value_ (pack $ show jpegQuality)]
     script_ [src_ "/js/edit.js", type_ "module"] ("" :: Text)

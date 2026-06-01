@@ -44,7 +44,7 @@ defaultConfig :: Config
 defaultConfig = Config
     (MainConfig "/var/www/mbe.site" 10)
     (DBConfig "/var/lib/mbe/storage.db")
-    (ImagesConfig 300 100 "preview-" Scale.Direct)
+    (ImagesConfig 300 100 "preview-" Scale.Direct True 3840)
     (AdminConfig "admin" defaultPasswordHash)
     JWT.defaultConfig
     (LoggingConfig Stdout)
@@ -65,7 +65,9 @@ parser = do
         jq <- fieldOf "jpeg_quality" number
         pp <- pack <$> fieldOf "preview_prefix" string
         sm <- fromMaybe Scale.Direct <$> fieldMbOf "scale_method" scaleMethodParser
-        return $ ImagesConfig ph jq pp sm
+        pe <- fromMaybe True         <$> fieldMbOf "prescale_enabled" flag
+        pt <- fromMaybe 3840         <$> fieldMbOf "prescale_threshold" number
+        return $ ImagesConfig ph jq pp sm pe pt
     ac <- section "admin" $ do
         l <- pack <$> fieldOf "login" string
         ph <- PasswordHash . pack <$> fieldOf "password_hash" string
