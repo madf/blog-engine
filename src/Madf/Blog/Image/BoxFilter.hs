@@ -1,7 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 
 module Madf.Blog.Image.BoxFilter
-    ( filterInt
+    ( integralImage
+    , filterInt
     , filterFloat
     ) where
 

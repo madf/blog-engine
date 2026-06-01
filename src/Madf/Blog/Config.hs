@@ -10,9 +10,11 @@ import Data.Text
 import Data.Text qualified as T
 import qualified Data.Text.IO as DTIO
 import Data.Ini.Config
+import Data.Maybe (fromMaybe)
 import Data.Password.Argon2
 import qualified Madf.Blog.JWT as JWT
 import qualified Madf.Blog.Job as Job
+import Madf.Blog.Image.Scale qualified as Scale
 import Madf.Blog.Config.Types
 import Madf.Blog.Config.Validate
 
@@ -42,7 +44,7 @@ defaultConfig :: Config
 defaultConfig = Config
     (MainConfig "/var/www/mbe.site" 10)
     (DBConfig "/var/lib/mbe/storage.db")
-    (ImagesConfig 300 100 "preview-")
+    (ImagesConfig 300 100 "preview-" Scale.Direct True 3840)
     (AdminConfig "admin" defaultPasswordHash)
     JWT.defaultConfig
     (LoggingConfig Stdout)
@@ -62,7 +64,10 @@ parser = do
         ph <- fieldOf "preview_height" number
         jq <- fieldOf "jpeg_quality" number
         pp <- pack <$> fieldOf "preview_prefix" string
-        return $ ImagesConfig ph jq pp
+        sm <- fromMaybe Scale.Direct <$> fieldMbOf "scale_method" scaleMethodParser
+        pe <- fromMaybe True         <$> fieldMbOf "prescale_enabled" flag
+        pt <- fromMaybe 3840         <$> fieldMbOf "prescale_threshold" number
+        return $ ImagesConfig ph jq pp sm pe pt
     ac <- section "admin" $ do
         l <- pack <$> fieldOf "login" string
         ph <- PasswordHash . pack <$> fieldOf "password_hash" string
@@ -90,3 +95,9 @@ logDestination = \case
     v -> if "file:" `T.isPrefixOf` v
          then Right . File . unpack $ T.drop 5 v
          else Left . unpack $ "Unknown log destination: '" <> v <> "'. Use 'stdout', 'syslog', or 'file:<path>'."
+
+scaleMethodParser :: Text -> Either String Scale.Method
+scaleMethodParser = \case
+    "direct"   -> Right Scale.Direct
+    "filtered" -> Right Scale.Filtered
+    v -> Left . unpack $ "Unknown scale method: '" <> v <> "'. Use 'direct' or 'filtered'."

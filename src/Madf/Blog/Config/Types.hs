@@ -13,6 +13,7 @@ import Data.Text
 import Data.Password.Argon2
 import qualified Madf.Blog.JWT as JWT
 import qualified Madf.Blog.Job as Job
+import Madf.Blog.Image.Scale qualified as Scale
 
 data Config = Config
     { main    :: !MainConfig
@@ -38,9 +39,12 @@ newtype DBConfig = DBConfig
     } deriving (Show)
 
 data ImagesConfig = ImagesConfig
-    { previewHeight :: !Int
-    , jpegQuality   :: !Int
-    , previewPrefix :: !Text
+    { previewHeight    :: !Int
+    , jpegQuality      :: !Int
+    , previewPrefix    :: !Text
+    , scaleMethod      :: !Scale.Method
+    , prescaleEnabled  :: !Bool
+    , prescaleThreshold :: !Int
     } deriving (Show)
 
 data AdminConfig = AdminConfig

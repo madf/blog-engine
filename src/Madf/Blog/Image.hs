@@ -1,8 +1,5 @@
-{-# LANGUAGE DeriveGeneric    #-}
-{-# LANGUAGE DeriveAnyClass   #-}
--- For `CP.PixelBaseComponent a` inside a constraint
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module Madf.Blog.Image
     ( Image (..)
@@ -23,7 +20,6 @@ module Madf.Blog.Image
     , upload
     , getMultiple
     , regenPreview
-    , scaleImage
     ) where
 
 import GHC.Generics
@@ -39,9 +35,8 @@ import Web.Scotty (File)
 import Network.Wai.Parse (FileInfo (..))
 import Codec.Picture qualified as CP
 import Codec.Picture.Metadata qualified as CP
-import Codec.Picture.Extra qualified as CPE
 import Graphics.HsExif qualified as EXIF
-import Madf.Blog.Image.BoxFilter qualified as BF
+import Madf.Blog.Image.Scale qualified as Scale
 import Madf.Blog.Image.Orientation qualified as O
 import Madf.Blog.Ids
 import Madf.Blog.Config
@@ -334,7 +329,7 @@ createPreview conf idata orientation = ImageData pimg (idFormat idata) pw ph fn
         (tw, th) = if willTranspose orientation
                    then (dh, h * dh `div` w)  -- Use h/w aspect ratio for transposed images
                    else (w * dh `div` h, dh)
-        pimg = maybeRotate $ scaleImage tw th img
+        pimg = maybeRotate $ Scale.scale (scaleMethod iconf) tw th img
         maybeRotate = maybe id O.normalize orientation
         img = idImage idata
         w = idWidth idata
@@ -365,36 +360,6 @@ regenPreview conn conf img = do
             execute conn
                 "UPDATE images SET preview_file_name = ?, preview_file_size = ?, preview_width = ?, preview_height = ?, updated = ? WHERE id = ?"
                 (idFileName previewImage, fileSize previewImageFileInfo, idWidth previewImage, idHeight previewImage, now, imageId img)
-
--- We need this helper because CPE.scaleBilinear requires pixel base type
--- to by Bounded and Integral, CP.dynamicMap does not impose such restrictions
--- and there are pixel types, notable PixelRGBF, that are not Bounded.
---
--- For most pixel types we do simple scaling, but for those that are not
--- Bounded we do conversion.
-scaleImage :: Int -> Int -> CP.DynamicImage -> CP.DynamicImage
-scaleImage w h dImg = case dImg of
-    CP.ImageRGB8   img -> CP.ImageRGB8   $ scale img
-    CP.ImageRGB16  img -> CP.ImageRGB16  $ scale img
-    CP.ImageY8     img -> CP.ImageY8     $ scale img
-    CP.ImageY16    img -> CP.ImageY16    $ scale img
-    CP.ImageY32    img -> CP.ImageY32    $ scale img
-    CP.ImageYA8    img -> CP.ImageYA8    $ scale img
-    CP.ImageYA16   img -> CP.ImageYA16   $ scale img
-    CP.ImageYCbCr8 img -> CP.ImageYCbCr8 $ scale img
-    CP.ImageCMYK8  img -> CP.ImageCMYK8  $ scale img
-    CP.ImageCMYK16 img -> CP.ImageCMYK16 $ scale img
-    CP.ImageRGBA8  img -> CP.ImageRGBA8  $ scale img
-    CP.ImageRGBA16 img -> CP.ImageRGBA16 $ scale img
-    CP.ImageYF     _   -> CP.ImageRGB8   $ scale (CP.convertRGB8 dImg)
-    CP.ImageRGBF   _   -> CP.ImageRGB8   $ scale (CP.convertRGB8 dImg)
-    where
-        scale :: forall a. (CP.Pixel a, Bounded (CP.PixelBaseComponent a), Integral (CP.PixelBaseComponent a)) => CP.Image a -> CP.Image a
-        scale img = let cs = CP.componentCount (undefined :: a)
-                        ow = CP.imageWidth img
-                        oh = CP.imageHeight img
-                        kSize = oh `div` h
-                    in CPE.scaleBilinear w h . CP.Image ow oh . BF.filterInt kSize ow oh cs . CP.imageData $ img
 
 data ImageFileInfo = ImageFileInfo
     { filePath :: !Text

@@ -57,6 +57,7 @@ library
       Madf.Blog.Image
       Madf.Blog.Image.BoxFilter
       Madf.Blog.Image.Orientation
+      Madf.Blog.Image.Scale
       Madf.Blog.Job
       Madf.Blog.JWT
       Madf.Blog.Logger

@@ -196,13 +196,15 @@ getAdminLoginPage = do
 getPostEditPage :: Action ()
 getPostEditPage = do
     Auth.requireCookie
+    conf <- asks Env.config
     i <- pathParam "postSlug"
     mp <- withConn $ \conn -> PostView.get conn i
     case mp of
         Just p -> do
             let title = if PostView.postTitle p == "" then "Untitled" else PostView.postTitle p
                 breadcrumbs = ([("Home", "/admin")], title)
-            showPage breadcrumbs $ Pages.edit p
+                iconf = Config.images conf
+            showPage breadcrumbs $ Pages.edit p (Config.prescaleEnabled iconf) (Config.prescaleThreshold iconf) (Config.jpegQuality iconf)
         Nothing -> do
             status NT.notFound404
             showPage ([], "Not Found") $ Pages.notFound "Unknown post id"

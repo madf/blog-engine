@@ -1,6 +1,10 @@
 import { updatePost, uploadImage, deleteImage } from './api.js'
 import { redirectToLogin } from './util.js'
 
+const PRESCALE_ENABLED   = document.getElementById('prescale-enabled').value === 'true';
+const PRESCALE_THRESHOLD = parseInt(document.getElementById('prescale-threshold').value, 10);
+const JPEG_QUALITY       = parseInt(document.getElementById('jpeg-quality').value, 10) / 100;
+
 let blockIdCounter = 0;
 let post = undefined;
 
@@ -52,12 +56,27 @@ const updateTextContent = (idx, content) => {
   }
 }
 
+const prescaleImage = async file => {
+  if (!PRESCALE_ENABLED) return file;
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const { width, height } = bitmap;
+  if (width <= PRESCALE_THRESHOLD && height <= PRESCALE_THRESHOLD) {
+    bitmap.close();
+    return file;
+  }
+  const canvas = new OffscreenCanvas(Math.round(width / 2), Math.round(height / 2));
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await canvas.convertToBlob({ type: file.type, quality: JPEG_QUALITY });
+  return new File([blob], file.name, { type: file.type });
+};
+
 const handleImageUpload = async (blockIdx, files) => {
   const block = post.content[blockIdx];
   if (!block || block.type !== 'carousel') return;
   let needSave = false;
 
-  for (const file of files) {
+  for (const file of Array.from(files).sort((a, b) => a.name.localeCompare(b.name))) {
     if (!file.type.startsWith('image/')) {
       continue;
     }
@@ -73,8 +92,9 @@ const handleImageUpload = async (blockIdx, files) => {
 
     try {
       // Upload immediately
+      const scaledFile = await prescaleImage(file);
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', scaledFile);
 
       const result = await uploadImage(post.slug, formData);
       if (result.length !== 1) {
