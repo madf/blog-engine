@@ -8,6 +8,17 @@ and this project adheres to the
 
 ## Unreleased
 
+## 1.2.1 - 2026-06-01
+### Fixed.
+ - CHANGELOG.md
+ - Actual version number.
+
+## 1.2.0 - 2026-06-01
+### Fixed.
+ - Slow image loading (#17).
+ - Wrong image loading order (#18).
+ - Wring 'Contents' size (#21).
+
 ## 1.1.5 - 2026-04-16
 ### Fixed.
  - Excerpt image width.
