@@ -2,7 +2,7 @@ module Madf.Blog.Admin.Pages.Edit
     ( edit
     ) where
 
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
 import Data.ByteString.Lazy (toStrict)
 import Data.Aeson (encode)
@@ -11,6 +11,7 @@ import qualified Madf.Blog.Post.View as Post
 import qualified Madf.Blog.Slug as Slug
 import Madf.Blog.Admin.Pages.PostType
 import Madf.Blog.Time
+import Madf.Blog.ToText
 
 edit :: Post.Post -> Bool -> Int -> Int -> Html ()
 edit p prescaleOn prescaleMin jpegQuality = do
@@ -33,6 +34,6 @@ edit p prescaleOn prescaleMin jpegQuality = do
             with a_ [id_ "preview-button", class_ "link-btn btn-secondary m-l-auto", href_ ("/admin/posts/" <> Slug.unSlug (Post.postSlug p))] "Preview"
             with button_ [id_ "save-button", class_ "btn btn-primary", type_ "button"] "Save"
     input_ [type_ "hidden", id_ "prescale-enabled",   value_ (if prescaleOn then "true" else "false")]
-    input_ [type_ "hidden", id_ "prescale-threshold", value_ (pack $ show prescaleMin)]
-    input_ [type_ "hidden", id_ "jpeg-quality",       value_ (pack $ show jpegQuality)]
+    input_ [type_ "hidden", id_ "prescale-threshold", value_ (toText prescaleMin)]
+    input_ [type_ "hidden", id_ "jpeg-quality",       value_ (toText jpegQuality)]
     script_ [src_ "/js/edit.js", type_ "module"] ("" :: Text)
