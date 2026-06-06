@@ -114,6 +114,7 @@ main {
   display: flex;
   flex-direction: column;
   max-width: 900px;
+  width: 100%;
   padding-left: 10px;
   padding-right: 10px;
 }
@@ -410,6 +411,8 @@ main {
 .carousel-image {
   display: block;
   margin: auto;
+  width: 100%;
+  height: auto;
 }
 
 .carousel-image-show {

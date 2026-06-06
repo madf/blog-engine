@@ -8,6 +8,10 @@ and this project adheres to the
 
 ## Unreleased
 
+## 1.2.2 - 2026-06-06
+### Fixed.
+ - Carousel width on small screens.
+
 ## 1.2.1 - 2026-06-01
 ### Fixed.
  - CHANGELOG.md
