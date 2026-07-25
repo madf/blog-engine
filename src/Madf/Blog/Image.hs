@@ -327,8 +327,8 @@ createPreview conf idata orientation = ImageData pimg (idFormat idata) pw ph fn
         fn = previewPrefix iconf <> idFileName idata
         -- Swap target dimensions if image will be transposed
         (tw, th) = if willTranspose orientation
-                   then (dh, h * dh `div` w)  -- Use h/w aspect ratio for transposed images
-                   else (w * dh `div` h, dh)
+                   then (dh, max 1 (h * dh `div` w))
+                   else (max 1 (w * dh `div` h), dh)
         pimg = maybeRotate $ Scale.scale (scaleMethod iconf) tw th img
         maybeRotate = maybe id O.normalize orientation
         img = idImage idata

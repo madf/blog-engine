@@ -7,4 +7,9 @@ import Data.Password.Argon2
 import Madf.Blog.Config
 
 verify :: AdminConfig -> Text -> Text -> Bool
-verify conf l p = login conf == l && checkPassword (mkPassword p) (passwordHash conf) == PasswordCheckSuccess
+-- seq forces checkPassword to run even when loginOk is False, so a wrong
+-- login can't be timed against a wrong password via short-circuiting.
+verify conf l p = passOk `seq` (loginOk && passOk)
+    where
+        loginOk = login conf == l
+        passOk = checkPassword (mkPassword p) (passwordHash conf) == PasswordCheckSuccess

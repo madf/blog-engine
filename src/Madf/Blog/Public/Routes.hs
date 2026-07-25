@@ -12,6 +12,8 @@ import Madf.Blog.Env qualified as Env
 import Madf.Blog.Config qualified as Config
 import Madf.Blog.Slug qualified as Slug
 import Madf.Blog.Image qualified as Image
+import Madf.Blog.Time qualified as Time
+import Madf.Blog.ToText (toText)
 
 routes :: App ()
 routes = do
@@ -23,6 +25,11 @@ routes = do
 destDir :: Action DT.Text
 destDir = asks $ Config.destDir . Config.main . Env.config
 
+sanitizePath :: DT.Text -> Action DT.Text
+sanitizePath t
+    | DT.null t || DT.any (== '/') t || t == ".." = status NT.badRequest400 >> finish
+    | otherwise                                   = return t
+
 getIndexPage :: Action ()
 getIndexPage = do
     setHeader "Content-Type" "text/html"
@@ -31,28 +38,29 @@ getIndexPage = do
 
 getYearIndexPage :: Action ()
 getYearIndexPage = do
-    year <- pathParam "year"
+    year <- pathParam "year" :: Action Time.Year
     setHeader "Content-Type" "text/html"
     dd <- destDir
-    file (DT.unpack $ dd <> "/" <> year <> "/index.html")
+    file (DT.unpack $ dd <> "/" <> toText year <> "/index.html")
 
 getPostPage :: Action ()
 getPostPage = do
-    year <- pathParam "year"
-    fn <- pathParam "fileName"
+    year <- pathParam "year" :: Action Time.Year
+    fn <- pathParam "fileName" >>= sanitizePath
     setHeader "Content-Type" "text/html"
     dd <- destDir
-    file (DT.unpack $ dd <> "/" <> year <> "/" <> fn)
+    file (DT.unpack $ dd <> "/" <> toText year <> "/" <> fn)
 
 getPostImage :: Action ()
 getPostImage = do
-    year <- pathParam "year"
+    year <- pathParam "year" :: Action Time.Year
     slug <- pathParam "postSlug"
-    fn <- pathParam "fileName"
+    _ <- sanitizePath (Slug.unSlug slug)
+    fn <- pathParam "fileName" >>= sanitizePath
     mi <- withConn $ \conn -> Image.getByFileName conn slug fn
     case mi of
         Nothing -> status NT.notFound404
         Just img -> do
             setHeader "Content-Type" (DTL.fromStrict $ Image.imageMIMEType img)
             dd <- destDir
-            file (DT.unpack $ dd <> "/" <> year <> "/" <> Slug.unSlug slug <> "/" <> fn)
+            file (DT.unpack $ dd <> "/" <> toText year <> "/" <> Slug.unSlug slug <> "/" <> fn)

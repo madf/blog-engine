@@ -61,7 +61,7 @@ requireHeader = do
     r <- checkHeader
     case r of
         Ok -> return ()
-        Error e -> status NT.unauthorized401 >> json e
+        Error e -> status NT.unauthorized401 >> json e >> finish
 
 redirectUnauthorized :: Maybe Text -> Text -> ActionT Env.EnvM ()
 redirectUnauthorized from errorMessage = void $ redirect ("/admin/login?" <> q)

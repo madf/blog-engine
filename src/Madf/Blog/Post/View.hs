@@ -76,6 +76,7 @@ instance ToJSON Post
             , "updated"  .= postUpdated v
             , "title"    .= postTitle v
             , "content"  .= postContent v
+            , "type"     .= postType v
             , "is_draft" .= postIsDraft v
             ]
         toEncoding v = pairs
@@ -108,7 +109,7 @@ get conn slug = do
         Just p -> Just <$> fromStoragePost conn p
         Nothing -> return Nothing
 
-update :: Connection -> Slug.Type -> Text -> [Block] -> Type -> Bool -> IO ()
+update :: Connection -> Slug.Type -> Text -> [Block] -> Type -> Bool -> IO Bool
 update conn slug t bs ty d = withTransaction conn $ do
     mapM_ (updateImageCaptions conn) bs
     Storage.update conn slug t (toStorageBlocks bs) ty d

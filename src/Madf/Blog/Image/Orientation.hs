@@ -23,8 +23,8 @@ getTransform :: Int -> Int -> ImageOrientation -> (Int, Int, Transform)
 getTransform w h o = let chainXForm = case o of
                                          Normal                          -> id
                                          Mirror                          -> mirrorH
-                                         Rotation HundredAndEighty       -> mirrorV
-                                         MirrorRotation HundredAndEighty -> mirrorV . mirrorH
+                                         MirrorRotation HundredAndEighty -> mirrorV
+                                         Rotation HundredAndEighty       -> mirrorV . mirrorH
                                          MirrorRotation MinusNinety      -> transpose
                                          Rotation MinusNinety            -> mirrorH . transpose
                                          MirrorRotation Ninety           -> mirrorV . mirrorH . transpose

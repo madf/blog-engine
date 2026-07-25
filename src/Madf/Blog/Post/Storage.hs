@@ -109,16 +109,18 @@ instance FromJSON Post
 create :: Connection -> IO Post
 create conn = do
     now <- getCurrentTime
-    mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (slug, title, content, type, reason, is_draft, created, updated) VALUES (NULL, '', ?, 'unlisted', '', ?, ?, ?) RETURNING id" ("[]" :: LBS.ByteString, True, now, now)
-    case mpid of
-        Nothing -> throwBlogError (DatabaseError "Failed to insert post into database")
-        Just pid -> do
-            slug <- Slug.withId 8 pid
-            execute conn "UPDATE posts SET slug = ? WHERE id = ?" (slug, pid)
-            mp <- getById conn pid
-            case mp of
-                Nothing -> throwBlogError (PostNotFound "Failed to retrieve newly created post")
-                Just p -> return p
+    pid <- withTransaction conn $ do
+        mpid <- fmap fromOnly . listToMaybe <$> query conn "INSERT INTO posts (slug, title, content, type, reason, is_draft, created, updated) VALUES (NULL, '', ?, 'unlisted', '', ?, ?, ?) RETURNING id" ("[]" :: LBS.ByteString, True, now, now)
+        case mpid of
+            Nothing -> throwBlogError (DatabaseError "Failed to insert post into database")
+            Just pid -> do
+                slug <- Slug.withId 8 pid
+                execute conn "UPDATE posts SET slug = ? WHERE id = ?" (slug, pid)
+                return pid
+    mp <- getById conn pid
+    case mp of
+        Nothing -> throwBlogError (PostNotFound "Failed to retrieve newly created post")
+        Just p -> return p
 
 selectBase :: Query
 selectBase = "SELECT id, slug, created, updated, title, content, type, reason, is_draft FROM posts"
@@ -129,11 +131,13 @@ get conn slug = fmap makePost . listToMaybe <$> query conn (selectBase <> " WHER
 getById :: Connection -> PostId -> IO (Maybe Post)
 getById conn pid = fmap makePost . listToMaybe <$> query conn (selectBase <> " WHERE id = ?") (Only pid)
 
-update :: Connection -> Slug.Type -> Text -> [Block] -> Type -> Bool -> IO ()
+update :: Connection -> Slug.Type -> Text -> [Block] -> Type -> Bool -> IO Bool
 update conn slug ti bs ty isd = do
     now <- getCurrentTime
     let (t, r) = splitType ty
     execute conn "UPDATE posts SET title = ?, content = ?, type = ?, reason = ?, is_draft = ?, updated = ? WHERE slug = ?" (ti, content, t, r, isd, now, slug)
+    n <- changes conn
+    return (n > 0)
     where
         content = encode bs
 

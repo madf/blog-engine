@@ -126,17 +126,22 @@ postAPI = do
         d <- formParam "draft"
         conf <- asks Env.config
         case DA.eitherDecode c of
-            Right bs -> withConn $ \conn -> do
-                PostView.update conn s t bs (PostStorage.makeType ty r) d
-                unless d (liftIO $ publish conn conf s)
+            Right bs -> do
+                updated <- withConn $ \conn -> do
+                    u <- PostView.update conn s t bs (PostStorage.makeType ty r) d
+                    when u (unless d (publish conn conf s))
+                    return u
+                unless updated (status NT.notFound404)
             Left m -> status NT.badRequest400 >> json m
     post   "/admin/api/posts/:postSlug/image" $ do
         Auth.requireHeader
         i <- pathParam "postSlug"
         fs <- files
         conf <- asks Env.config
-        r <- withConn $ \conn -> mapM (Image.upload conn conf i) fs
-        json r
+        r <- tryAny $ withConn $ \conn -> mapM (Image.upload conn conf i) fs
+        case r of
+            Right imgs -> json imgs
+            Left e -> status NT.internalServerError500 >> json (DT.pack (show e))
     post   "/admin/api/posts/regenerate" $ do
         Auth.requireHeader
         conf <- asks Env.config
