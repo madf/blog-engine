@@ -8,6 +8,21 @@ and this project adheres to the
 
 ## Unreleased
 
+## 1.2.3 - 2026-07-26
+### Fixed.
+ - Carousel images upscaled past native resolution. [claude]
+ - Auth bypass in `requireHeader` on failed auth. [claude]
+ - Swapped EXIF orientation 3/4 transforms. [claude]
+ - `Post` toJSON/toEncoding mismatch on `type`. [claude]
+ - Path traversal via unsanitized URL segments. [claude]
+ - Non-transactional slug backfill. [claude]
+ - Divide-by-zero on extreme aspect ratios. [claude]
+ - Post update silently no-opped on stale slug. [claude]
+ - Login timing side-channel. [claude]
+
+### Changed.
+ - Removed dead `styles.css` stylesheet.
+
 ## 1.2.2 - 2026-06-06
 ### Fixed.
  - Carousel width on small screens.
